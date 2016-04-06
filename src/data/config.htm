@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+
+<style>
+
+body{
+    text-align: center;
+    background: #123;
+    font-family: Verdana, Geneva, sans-serif;
+    color: #888;
+}
+
+h1{
+    color: #888;
+
+}
+h2 {
+    size: 120%;
+    color: #1f3f60;
+   
+}
+
+.btn {
+
+  -webkit-border-radius: 28;
+  -moz-border-radius: 28;
+  border-radius: 28px;
+  font-family: Arial;
+  color: #ffffff;
+  font-size: 20px;
+  background: #3498db;
+  padding: 10px 20px 10px 20px;
+  text-decoration: none;
+}
+
+.btn:hover {
+  background: #3cb0fd;
+  text-decoration: none;
+}
+</style>
+
+<head>
+<meta charset="utf-8">
+    <title>Wifi Switch / Config</title>
+</head>
+<body>
+</br>
+<h1>Config</h1></br></br>
+<div >
+<table align=center>
+<tr><td align=left><b>IP module adress : </b></td><td id="apip"></td></tr>
+<tr><td align=left><b>Network state: </b></td><td id="stat"></td></tr>
+<tr><td align=left><b>Network IP adress : </b></td><td id="netip"></td></tr>
+<tr><td align=left><b>Network IP router : </b></td><td id="servip"></td></tr>
+</table>
+</div>
+</br></br></br></br>
+<p><a class="btn" id='bt1' onclick="btconfig();">Back</a></p>
+
+</body>
+
+<script>
+    function btconfig(){
+    window.location.href = '/index.htm';
+    }
+
+    function getjson(theUrl) // the synchronous mode is deprecated in firefox
+{
+    var temp=""
+    var xmlHttp = new XMLHttpRequest();
+    xmlHttp.open('GET', theUrl, false);  // `false` makes the request synchronous
+    xmlHttp.send(null);
+
+    if (xmlHttp.status === 200) {
+            console.log(JSON.parse(xmlHttp.responseText));
+                temp= JSON.parse(xmlHttp.responseText);
+    }
+
+
+    if (temp != ""){
+        return temp;}
+}
+
+wifistate=getjson("wifistate.json")
+document.getElementById("apip").innerHTML =wifistate[0].apip;
+if (wifistate[0].wifistate!= "Idle") {
+document.getElementById("stat").innerHTML = wifistate[0].wifistate + " to " + wifistate[0].wifiname ;
+document.getElementById("netip").innerHTML =wifistate[0].netip;
+document.getElementById("servip").innerHTML = wifistate[0].servip;
+}
+</script>
+
+
+
+    
+
+
+
+</html>

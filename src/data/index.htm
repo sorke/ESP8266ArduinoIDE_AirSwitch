@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+<title>Wifi Switch</title>
+<style type="text/css">
+body{
+    text-align: center;
+    background: #123;
+    font-family: Verdana, Geneva, sans-serif;
+}
+
+h1{
+    color: #888;
+
+}
+.btn {
+
+  -webkit-border-radius: 28;
+  -moz-border-radius: 28;
+  border-radius: 28px;
+  font-family: Arial;
+  color: #ffffff;
+  font-size: 20px;
+  background: #3498db;
+  padding: 10px 20px 10px 20px;
+  text-decoration: none;
+}
+
+.btn:hover {
+  background: #3cb0fd;
+  text-decoration: none;
+}
+
+.tgl{display:none}.tgl,.tgl:after,.tgl:before,.tgl *,.tgl *:after,.tgl *:before,.tgl + .tgl-btn{box-sizing:border-box}.tgl::-moz-selection,.tgl:after::-moz-selection,.tgl:before::-moz-selection,.tgl *::-moz-selection,.tgl *:after::-moz-selection,.tgl *:before::-moz-selection,.tgl + .tgl-btn::-moz-selection{background:none}.tgl::selection,.tgl:after::selection,.tgl:before::selection,.tgl *::selection,.tgl *:after::selection,.tgl *:before::selection,.tgl + .tgl-btn::selection{background:none}.tgl + .tgl-btn{outline:0;display:block;width:4em;height:2em;position:relative;cursor:pointer;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.tgl + .tgl-btn:after,.tgl + .tgl-btn:before{position:relative;display:block;content:"";width:50%;height:100%}.tgl + .tgl-btn:after{left:0}.tgl + .tgl-btn:before{display:none}.tgl:checked + .tgl-btn:after{left:50%}.tgl-light + .tgl-btn{background:#f0f0f0;border-radius:2em;padding:2px;-webkit-transition:all .4s ease;transition:all .4s ease}.tgl-light + .tgl-btn:after{border-radius:50%;background:#aba;-webkit-transition:all .2s ease;transition:all .2s ease}.tgl-light:checked + .tgl-btn{background:#690}
+
+.led-green {
+	
+    margin: 20px auto;
+    width: 120px;
+    height: 120px;
+    background-color: #690;
+    border-radius: 50%;
+    box-shadow: #000 0 -1px 7px 1px, inset #460 0 -1px 9px, #7D0 0 2px 50px;
+}
+
+
+
+.led-gray {
+    margin: 20px auto;
+    width: 120px;
+    height: 120px;
+    background-color: #999;
+    border-radius: 50%;
+    box-shadow: #AAA 0 -1px 7px 1px, inset #EEE 0 -1px 9px, #777 0 2px 0px;
+}
+
+</style>
+</head>
+
+<body onload=\javascript:start();\>
+
+	</br>
+	<h1>Light switch</h1></br></br>
+
+	<div class="led-green" id='led1'></div>
+	<div class="led-gray" id='led0'></div>
+
+	</br></br>
+	<table align='center'>
+		<td>
+	<div id='relay1status' >
+		  <input class='tgl tgl-light' id='cb1' onclick="buttonclick(this);" type='checkbox'>
+		  <label class='tgl-btn' for='cb1'></label>
+	</div>
+		</td>
+	</table>
+	</br></br></br></br>
+	<p><a class="btn" id='bt1' onclick="btconfig();">Parameters</a></p>
+</body>
+
+<script>
+	function btconfig(){
+	window.location.href = '/config.htm';
+	}
+
+
+	var e = document.getElementById('led1');
+	e.style.display = 'none';
+
+var websock;
+	function start() {
+	websock = new WebSocket('ws://' + window.location.hostname + ':81/');
+	websock.onopen = function(evt) { console.log('websock open'); };
+	websock.onclose = function(evt) { console.log('websock close'); };
+	websock.onerror = function(evt) { console.log(evt); };
+	websock.onmessage = function(evt) {
+	console.log(evt);
+
+	if (evt.data === 'r1on\n') {
+	var e = document.getElementById('led0');
+	e.style.display = 'none';
+	var e = document.getElementById('led1');
+	e.style.display = '';
+	var e = document.getElementById('cb1');
+	e.checked = true;
+	}
+	else if (evt.data === 'r1off\n') {
+	var e = document.getElementById('led1');
+	e.style.display = 'none';
+	var e = document.getElementById('led0');
+	e.style.display = '';
+	var e = document.getElementById('cb1');
+	e.checked = false;
+	}
+	else {
+	console.log('unknown event');
+	}
+	};
+	}
+
+	function buttonclick(e) {
+		
+	if (e.checked === true) {
+	var s ='r1on\n'; }
+	if (e.checked === false) {
+	var s ='r1off\n'; }
+
+	websock.send(s);
+	}
+
+start();
+</script>
+</html>
