@@ -12,15 +12,22 @@
 //ajouter id unique pour chaque retour de json
 
 String wifistatestring[7]={"Inactive","No SSID available","Scan completed","Connected","Connection failed","Connection lost","Connecting"};
-const char* STssid = "ES_2590";
-const char* STpassword = "46600000";
-const char* APssid = "Light Switch";
-const char* APpassword = "12345678";
+const char* initSTssid = "ES_2590";
+const char* initSTpwd = "46600000";
+const char* initAPssid = "Light Switch";
+const char* initAPpwd = "12345678";
+String APssid;
+String APpwd; //pkoi le pwd n'est pas ok ? histoir de eol ? retour chariot?
+String STssid;
+String STpwd;
+String WifiLastStatus;
+
 const char* host = "switch";
 uint8_t MAC_array[6];
 char MAC_char[18];
 const int R1PIN = 2;
 bool R1Status;
+IPAddress myIP;
 
 // Commands sent through Web Socket
 const char R1ON[] = "r1on\n";
@@ -225,8 +232,45 @@ String wifiscan() {
 }
 
 String wifistate(){
+  // add ssid name (if wifistatus=connecting or connected or not exist?)
   String json = "[{\"Wifi access point state\":\""+wifistatestring[WiFi.status()]+"\"}]";
   return json;
+  }
+
+
+  String wifiparam(){
+
+    char myIPString[24];
+    myIP = WiFi.softAPIP();
+    sprintf(myIPString, "%d.%d.%d.%d", myIP[0], myIP[1], myIP[2], myIP[3]);
+    
+    char mylocalIPString[24];
+    IPAddress mylocalIP= WiFi.localIP();
+    sprintf(mylocalIPString, "%d.%d.%d.%d", mylocalIP[0], mylocalIP[1], mylocalIP[2], mylocalIP[3]);
+    
+    char mysubnetMaskString[24];
+    IPAddress mysubnetMask = WiFi.subnetMask();
+    sprintf(mysubnetMaskString, "%d.%d.%d.%d", mysubnetMask[0], mysubnetMask[1], mysubnetMask[2], mysubnetMask[3]);
+    
+    char mygatewayIPString[24];
+    IPAddress mygatewayIP = WiFi.gatewayIP();
+    sprintf(mygatewayIPString, "%d.%d.%d.%d", mygatewayIP[0], mygatewayIP[1], mygatewayIP[2], mygatewayIP[3]); 
+
+    String json = "[{\"APip\":\""+String(myIPString)+"\"";
+    json += ",\"APssid\":\""+APssid+"\"";
+    json += ",\"STssid\":\""+String(WiFi.SSID())+"\"";
+        if(WiFi.status() == 3) {
+        json += ",\"state\":\""+wifistatestring[3]+"\"";
+        }
+        else {
+        json += ",\"state\":\""+WifiLastStatus+"\""; 
+        }
+    json += ",\"localip\":\""+String(mylocalIPString)+"\"";
+    json += ",\"netmaskip\":\""+String(mysubnetMaskString)+"\"";
+    json += ",\"gatewayip\":\""+String(mygatewayIPString)+"\"";
+    json += ",\"mac\":\""  +String(MAC_char)+  "\"}]";
+    
+    return json;
   }
 
 String macaddress() {
@@ -238,28 +282,39 @@ String macaddress() {
     return json;
 }
 
-void STconnect(){
-   Serial.println("");
-  Serial.print("Connected! IP address: ");
-  Serial.println(WiFi.localIP());
 
-  if (MDNS.begin(host, WiFi.localIP())) {
-    Serial.println("MDNS responder started");
-    MDNS.addService("http", "tcp", 80);
-    MDNS.addService("ws", "tcp", 81);
-  }
-  else {
-    Serial.println("MDNS.begin failed");
-  }
+void STconnect(String ssid,String pwd){
 
-  Serial.print("Open http://");
-  Serial.print(host);
-  Serial.print(".local or http://");
-  Serial.println(WiFi.localIP());
+delay(500); 
+Serial.print("Connecting to : ");
+Serial.println(ssid);
+WiFi.begin(ssid.c_str(), pwd.c_str());
+int i=0;
+    while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(WiFi.status());
+    i++;
+        if(i>20){
+        Serial.println("");
+        Serial.print("Connection failed : ");
+        WifiLastStatus = wifistatestring[WiFi.status()];
+        Serial.println(WifiLastStatus);
+
+        WiFi.disconnect();
+        WiFi.mode(WIFI_AP);
+        break;
+        }
+    }
+    Serial.println("");
+
+  if (WiFi.status() == WL_CONNECTED) {
   
+  Serial.print("Connected to : ");
+  Serial.println(ssid);
+  Serial.print("Open http://");
+  Serial.println(WiFi.localIP());
+  }  
   }
-
-
 
 void setup(void){
 
@@ -284,8 +339,7 @@ void setup(void){
                   info.maxPathLength
                  );
 
-  //ajouter espace utilisé/ espace libre
-  {
+   {
     Dir dir = SPIFFS.openDir("/");
     while (dir.next()) {    
       String fileName = dir.fileName();
@@ -295,24 +349,57 @@ void setup(void){
     Serial.printf("\n");
   }
 
-  //WiFi.mode(WIFI_AP);
-  WiFi.mode(WIFI_AP_STA);
+// ---------------------------  WIFI INIT -------------------------------------//
+
+  File f = SPIFFS.open("/info.txt", "r");
+    if (!f) {
+        Serial.println("Wifi parameters file failed to open");
+    }
+    else {
+        APssid=f.readStringUntil('\n');
+        APpwd=f.readStringUntil('\n');
+        STssid=f.readStringUntil('\n');
+        STpwd=f.readStringUntil('\n');
+        f.close();
+    }
+
+    if (APssid.length() <= 1){
+      APssid =initAPssid;
+      APpwd =initAPpwd;
+    }
+  // WIFI AP INIT
   
-  //WIFI AP INIT
-  WiFi.softAP(APssid, APpassword);
-  IPAddress myIP = WiFi.softAPIP();
+  WiFi.softAP(APssid.c_str(), APpwd.c_str());
+  myIP = WiFi.softAPIP();
   Serial.print("AP IP address: ");
   Serial.println(myIP);
-
-
-  //WIFI INIT
-  Serial.printf("Connecting to %s\n", STssid);
-  if (String(WiFi.SSID()) != String(STssid)) {
-    WiFi.begin(STssid, STpassword);
+    
+  if (STssid.length() <= 1){
+      STssid =initSTssid;
+      STpwd =initSTpwd;
   }
-  
+  STconnect(STssid,STpwd);
+
+Serial.println(APssid);
+Serial.println(APpwd);
+Serial.println(STssid);
+Serial.println(STpwd);
+
+    if (MDNS.begin(host, WiFi.localIP())) {
+    Serial.println("MDNS responder started");
+    MDNS.addService("http", "tcp", 80);
+    MDNS.addService("ws", "tcp", 81);
+    Serial.print("Open http://");
+    Serial.print(host);
+    Serial.println(".local");
+    }
+    else {
+      Serial.println("MDNS.begin failed");
+    }
 
 
+
+// -----------------------  END of WIFI INIT  ---------------------------------//
   
 //is it necessary to use array and char features? String(texte) can work?
 
@@ -332,8 +419,42 @@ void setup(void){
   server.on("/aplist", HTTP_GET, [](){server.send(200, "text/json", wifiscan());});
   server.on("/apstate", HTTP_GET, [](){server.send(200, "text/json", wifistate());});
   server.on("/iotmac", HTTP_GET, [](){server.send(200, "text/json", macaddress());});
+  server.on("/iotmac", HTTP_GET, [](){server.send(200, "text/json", macaddress());});
 
+  server.on("/iotname", [](){
+
+    if (server.args() != 0){
+    String newAPname=server.arg("name");
+    Serial.print("Changing access point name to ");
+    Serial.println(newAPname);
+        if (APssid != newAPname) {
+        WiFi.softAP(newAPname.c_str(), APpwd.c_str());
+        APssid = newAPname;
+        //update info.txt
+        }
+    server.send(200, "text/json","[{\"iotname\":\""+APssid+"\"}]");
+    }
+    else{
+    server.send(200, "text/json","[{\"iotname\":\""+APssid+"\"}]");
+    }
     
+  }
+  );
+
+  server.on("/apconnect", [](){
+     
+    String ssid=server.arg("ssid");
+    String pwd =server.arg("pwd");
+    Serial.print("Connecting to ");
+    Serial.println(ssid);
+        if (String(WiFi.SSID()) != ssid) {
+        WiFi.begin(ssid.c_str(), pwd.c_str());
+        }  
+    //update info.txt
+  });
+  
+  server.on("/wifiparam", HTTP_GET, [](){server.send(200, "text/json", wifiparam());});
+  
   server.begin();
   Serial.println("HTTP server started");
   webSocket.begin();
