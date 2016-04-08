@@ -9,7 +9,7 @@
 #include <ESP8266mDNS.h>
 #include <FS.h>
 
-//ajouter id unique pour chaque retour de json
+//ajouter id unique pour chaque retour de json ?
 
 String wifistatestring[7]={"Inactive","No SSID available","Scan completed","Connected","Connection failed","Connection lost","Connecting"};
 const char* initSTssid = "ES_2590";
@@ -111,10 +111,10 @@ void handleFileList() {
   server.send(200, "text/json", output);
 }
 
-void writeR1(bool R1on){
-  R1Status = R1on;
+void writeR1(bool Rstate){   //void writeRelay(bool Rstate,int RelayNumber) for multiple relays
+  R1Status = Rstate;
   // Note inverted logic for Adafruit HUZZAH board
-  if (R1on) {
+  if (Rstate) {
     digitalWrite(R1PIN, LOW);
   }
   else {
@@ -273,19 +273,29 @@ String wifistate(){
     return json;
   }
 
+String macstr() {
+  WiFi.macAddress(MAC_array);
+      for (int i = 0; i < sizeof(MAC_array); ++i){
+      sprintf(MAC_char,"%s%02x:",MAC_char,MAC_array[i]);
+      }
+    MAC_char[17]=(char)0;
+    return String(MAC_char);
+}
+
 String macaddress() {
-    String mac;
-    //std::string mac=MAC_char;
-    mac= String(MAC_char);
     String json = "[";
-    json += "{Mac address : "  +mac+  "}]";
+    json += "{Mac address : "  +String(MAC_char)+  "}]";
     return json;
 }
 
+void APconnect(String ssid, String pwd){
+WiFi.softAP(ssid.c_str(), pwd.c_str());
+myIP = WiFi.softAPIP();
+Serial.print("AP IP address: ");
+Serial.println(myIP);
+}
 
 void STconnect(String ssid,String pwd){
-
-delay(500); 
 Serial.print("Connecting to : ");
 Serial.println(ssid);
 WiFi.begin(ssid.c_str(), pwd.c_str());
@@ -315,6 +325,64 @@ int i=0;
   Serial.println(WiFi.localIP());
   }  
   }
+
+void MDNSstart(const char* h,IPAddress IP){
+    if (MDNS.begin(h, IP)) {
+    Serial.println("MDNS responder started");
+    MDNS.addService("http", "tcp", 80);
+    MDNS.addService("ws", "tcp", 81);
+    Serial.print("Open http://");
+    Serial.print(host);
+    Serial.println(".local");
+    }
+    else {
+      Serial.println("MDNS.begin failed");
+    }
+}
+
+  void ReadWifiData(String filename){
+  File f = SPIFFS.open(filename, "r");
+    if (!f) {
+        Serial.println("Wifi parameters file failed to open");
+    }
+    else {
+        APssid=f.readStringUntil('\n');
+        APssid=APssid.substring(0,APssid.length()-1);
+        APpwd=f.readStringUntil('\n');
+        APpwd=APpwd.substring(0,APpwd.length()-1);
+        STssid=f.readStringUntil('\n');
+        STssid=STssid.substring(0,STssid.length()-1);
+        STpwd=f.readStringUntil('\n');
+        STpwd=STpwd.substring(0,STpwd.length()-1);
+        
+        f.close();
+    }
+
+    if (APssid.length() < 1){
+      APssid =initAPssid;
+      APpwd =initAPpwd;
+    }
+
+    if (STssid.length() < 1){
+    STssid =initSTssid;
+    STpwd =initSTpwd;
+    }
+  }
+
+void WriteWifiData(String filename){
+  File f = SPIFFS.open(filename, "w");
+  if (!f) {
+      Serial.println("file open failed");
+  }
+  else {
+    f.println(APssid);
+    f.println(APpwd);
+    f.println(STssid);
+    f.println(STpwd);
+    f.close();
+    Serial.println("file writed");
+  }
+}
 
 void setup(void){
 
@@ -349,80 +417,44 @@ void setup(void){
     Serial.printf("\n");
   }
 
-// ---------------------------  WIFI INIT -------------------------------------//
-
-  File f = SPIFFS.open("/info.txt", "r");
-    if (!f) {
-        Serial.println("Wifi parameters file failed to open");
-    }
-    else {
-        APssid=f.readStringUntil('\n');
-        APpwd=f.readStringUntil('\n');
-        STssid=f.readStringUntil('\n');
-        STpwd=f.readStringUntil('\n');
-        f.close();
-    }
-
-    if (APssid.length() <= 1){
-      APssid =initAPssid;
-      APpwd =initAPpwd;
-    }
-  // WIFI AP INIT
-  
-  WiFi.softAP(APssid.c_str(), APpwd.c_str());
-  myIP = WiFi.softAPIP();
-  Serial.print("AP IP address: ");
-  Serial.println(myIP);
-    
-  if (STssid.length() <= 1){
-      STssid =initSTssid;
-      STpwd =initSTpwd;
-  }
+  ReadWifiData("/info.txt");
   STconnect(STssid,STpwd);
-
-Serial.println(APssid);
-Serial.println(APpwd);
-Serial.println(STssid);
-Serial.println(STpwd);
-
-    if (MDNS.begin(host, WiFi.localIP())) {
-    Serial.println("MDNS responder started");
-    MDNS.addService("http", "tcp", 80);
-    MDNS.addService("ws", "tcp", 81);
-    Serial.print("Open http://");
-    Serial.print(host);
-    Serial.println(".local");
-    }
-    else {
-      Serial.println("MDNS.begin failed");
-    }
-
-
-
-// -----------------------  END of WIFI INIT  ---------------------------------//
+  APconnect(APssid,APpwd);
+  MDNSstart(host,WiFi.localIP());
   
-//is it necessary to use array and char features? String(texte) can work?
-
-  WiFi.macAddress(MAC_array);
-    for (int i = 0; i < sizeof(MAC_array); ++i){
-      sprintf(MAC_char,"%s%02x:",MAC_char,MAC_array[i]);}
-    MAC_char[17]=(char)0;
-  Serial.print("ST MAC address : ");
-  Serial.println(MAC_char);
+  server.begin();
+  Serial.println("HTTP server started");
   
-
-  server.on("/list", HTTP_GET, handleFileList);
+  webSocket.begin();
+  webSocket.onEvent(webSocketEvent);
+  Serial.println("webSocket service started");
+  
+  Serial.print("Module MAC address : ");
+  Serial.println(macstr());
 
   server.onNotFound([](){if(!handleFileRead(server.uri()))server.send(404, "text/plain", "FileNotFound"); });
-
-  
+  server.on("/list", HTTP_GET, handleFileList);
   server.on("/aplist", HTTP_GET, [](){server.send(200, "text/json", wifiscan());});
   server.on("/apstate", HTTP_GET, [](){server.send(200, "text/json", wifistate());});
   server.on("/iotmac", HTTP_GET, [](){server.send(200, "text/json", macaddress());});
-  server.on("/iotmac", HTTP_GET, [](){server.send(200, "text/json", macaddress());});
+  server.on("/wifiparam", HTTP_GET, [](){server.send(200, "text/json", wifiparam());});
 
-  server.on("/iotname", [](){
-
+  server.on("/relay", [](){ // Ready for multiple relays
+    if (server.args() != 0){
+      if (server.hasArg("r1")){
+        if (server.arg("r1")=="") {server.send(200, "text/json","[{\"r1\":\""+String(R1Status)+"\"}]");}
+        if (server.arg("r1")=="on"){
+          writeR1(HIGH);
+          server.send(200, "text/json","[{\"r1\":\""+String(R1Status)+"\"}]");
+        }
+        if (server.arg("r1")=="off"){
+          writeR1(LOW);
+          server.send(200, "text/json","[{\"r1\":\""+String(R1Status)+"\"}]");}
+        }
+    }
+  });
+  
+  server.on("/iotname", [](){ // vérifier que name n'est pas vide
     if (server.args() != 0){
     String newAPname=server.arg("name");
     Serial.print("Changing access point name to ");
@@ -430,36 +462,21 @@ Serial.println(STpwd);
         if (APssid != newAPname) {
         WiFi.softAP(newAPname.c_str(), APpwd.c_str());
         APssid = newAPname;
-        //update info.txt
+        WriteWifiData("/info.txt");
         }
     server.send(200, "text/json","[{\"iotname\":\""+APssid+"\"}]");
     }
     else{
     server.send(200, "text/json","[{\"iotname\":\""+APssid+"\"}]");
     }
-    
-  }
-  );
+  });
 
   server.on("/apconnect", [](){
-     
-    String ssid=server.arg("ssid");
-    String pwd =server.arg("pwd");
-    Serial.print("Connecting to ");
-    Serial.println(ssid);
-        if (String(WiFi.SSID()) != ssid) {
-        WiFi.begin(ssid.c_str(), pwd.c_str());
-        }  
-    //update info.txt
+    STssid=server.arg("ssid");
+    STpwd =server.arg("pwd");
+    WriteWifiData("/info.txt");
+    STconnect(STssid,STpwd);
   });
-  
-  server.on("/wifiparam", HTTP_GET, [](){server.send(200, "text/json", wifiparam());});
-  
-  server.begin();
-  Serial.println("HTTP server started");
-  webSocket.begin();
-  webSocket.onEvent(webSocketEvent);
-  Serial.println("webSocket service started");
 
 }
  
