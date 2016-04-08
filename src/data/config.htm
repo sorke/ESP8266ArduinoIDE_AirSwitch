@@ -48,10 +48,14 @@ h2 {
 <h1>Config</h1></br></br>
 <div >
 <table align=center>
-<tr><td align=left><b>IP module adress : </b></td><td id="apip"></td></tr>
-<tr><td align=left><b>Network state: </b></td><td id="stat"></td></tr>
-<tr><td align=left><b>Network IP adress : </b></td><td id="netip"></td></tr>
-<tr><td align=left><b>Network IP router : </b></td><td id="servip"></td></tr>
+<tr><td align=left><b>Module name : </b></td><td id="APssid"></td></tr>
+<tr><td align=left><b>Module IP : </b></td><td id="APip"></td></tr>
+<tr><td align=left><b>Module mac : </b></td><td id="mac"></td></tr>
+<tr><td align=left><b>Access point name: </b></td><td id="STssid"></td></tr>
+<tr><td align=left><b>Network state: </b></td><td id="state"></td></tr>
+<tr><td align=left><b>Network local IP : </b></td><td id="localip"></td></tr>
+<tr><td align=left><b>Network mask IP : </b></td><td id="netip"></td></tr>
+<tr><td align=left><b>Network gateway IP : </b></td><td id="gatewayip"></td></tr>
 </table>
 </div>
 </br></br></br></br>
@@ -81,13 +85,16 @@ h2 {
         return temp;}
 }
 
-wifistate=getjson("wifistate.json")
-document.getElementById("apip").innerHTML =wifistate[0].apip;
-if (wifistate[0].wifistate!= "Idle") {
-document.getElementById("stat").innerHTML = wifistate[0].wifistate + " to " + wifistate[0].wifiname ;
-document.getElementById("netip").innerHTML =wifistate[0].netip;
-document.getElementById("servip").innerHTML = wifistate[0].servip;
-}
+wifiparam=getjson("wifiparam")
+document.getElementById("APip").innerHTML =wifiparam[0].APip;
+document.getElementById("APssid").innerHTML =wifiparam[0].APssid;
+document.getElementById("STssid").innerHTML =wifiparam[0].STssid;
+document.getElementById("state").innerHTML = wifiparam[0].state;
+document.getElementById("localip").innerHTML =wifiparam[0].localip;
+document.getElementById("netip").innerHTML =wifiparam[0].netmaskip;
+document.getElementById("gatewayip").innerHTML = wifiparam[0].gatewayip;
+document.getElementById("mac").innerHTML = wifiparam[0].mac;
+
 </script>
 
 
