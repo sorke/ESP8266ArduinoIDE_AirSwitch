@@ -21,6 +21,8 @@ String APpwd; //pkoi le pwd n'est pas ok ? histoir de eol ? retour chariot?
 String STssid;
 String STpwd;
 String WifiLastStatus;
+String InfoFile="/info.txt";
+boolean WifiActive=false;
 
 const char* host = "switch";
 uint8_t MAC_array[6];
@@ -233,7 +235,7 @@ String wifiscan() {
 
 String wifistate(){
   // add ssid name (if wifistatus=connecting or connected or not exist?)
-  String json = "[{\"Wifi access point state\":\""+wifistatestring[WiFi.status()]+"\"}]";
+  String json = "[{\"apstate\":\""+wifistatestring[WiFi.status()]+"\"}]";
   return json;
   }
 
@@ -258,12 +260,13 @@ String wifistate(){
 
     String json = "[{\"APip\":\""+String(myIPString)+"\"";
     json += ",\"APssid\":\""+APssid+"\"";
-    json += ",\"STssid\":\""+String(WiFi.SSID())+"\"";
-        if(WiFi.status() == 3) {
-        json += ",\"state\":\""+wifistatestring[3]+"\"";
+        if(WifiActive == true) {
+        json += ",\"state\":\""+wifistatestring[WiFi.status()]+"\"";
+        json += ",\"STssid\":\""+String(WiFi.SSID())+"\"";
         }
         else {
         json += ",\"state\":\""+WifiLastStatus+"\""; 
+        json += ",\"STssid\":\""+STssid+"\"";
         }
     json += ",\"localip\":\""+String(mylocalIPString)+"\"";
     json += ",\"netmaskip\":\""+String(mysubnetMaskString)+"\"";
@@ -309,7 +312,7 @@ int i=0;
         Serial.print("Connection failed : ");
         WifiLastStatus = wifistatestring[WiFi.status()];
         Serial.println(WifiLastStatus);
-
+        WifiActive = false;
         WiFi.disconnect();
         WiFi.mode(WIFI_AP);
         break;
@@ -318,7 +321,7 @@ int i=0;
     Serial.println("");
 
   if (WiFi.status() == WL_CONNECTED) {
-  
+  WifiActive=true;
   Serial.print("Connected to : ");
   Serial.println(ssid);
   Serial.print("Open http://");
@@ -389,6 +392,7 @@ void setup(void){
   delay(100);
   pinMode(R1PIN, OUTPUT);
   digitalWrite(R1PIN, HIGH);
+  pinMode(A0, INPUT);
   Serial.begin(115200);
   Serial.print("\n");
   //Serial.setDebugOutput(true);
@@ -417,7 +421,7 @@ void setup(void){
     Serial.printf("\n");
   }
 
-  ReadWifiData("/info.txt");
+  ReadWifiData(InfoFile);
   STconnect(STssid,STpwd);
   APconnect(APssid,APpwd);
   MDNSstart(host,WiFi.localIP());
@@ -438,6 +442,7 @@ void setup(void){
   server.on("/apstate", HTTP_GET, [](){server.send(200, "text/json", wifistate());});
   server.on("/iotmac", HTTP_GET, [](){server.send(200, "text/json", macaddress());});
   server.on("/wifiparam", HTTP_GET, [](){server.send(200, "text/json", wifiparam());});
+  server.on("/analog", HTTP_GET, [](){server.send(200, "text/json", "[{\"analog read\":\""+String(analogRead(A0))+"\"}]");});
 
   server.on("/relay", [](){ // Ready for multiple relays
     if (server.args() != 0){
@@ -454,15 +459,16 @@ void setup(void){
     }
   });
   
-  server.on("/iotname", [](){ // vérifier que name n'est pas vide
-    if (server.args() != 0){
+  server.on("/iotname", [](){ 
+    if (server.args() != 0 && server.arg("name")!="" ){
     String newAPname=server.arg("name");
     Serial.print("Changing access point name to ");
     Serial.println(newAPname);
         if (APssid != newAPname) {
-        WiFi.softAP(newAPname.c_str(), APpwd.c_str());
         APssid = newAPname;
-        WriteWifiData("/info.txt");
+        WriteWifiData(InfoFile);
+        server.send(200, "text/json","[{\"iotname\":\""+APssid+"\"}]"); 
+        WiFi.softAP(newAPname.c_str(), APpwd.c_str());
         }
     server.send(200, "text/json","[{\"iotname\":\""+APssid+"\"}]");
     }
@@ -472,10 +478,34 @@ void setup(void){
   });
 
   server.on("/apconnect", [](){
-    STssid=server.arg("ssid");
-    STpwd =server.arg("pwd");
-    WriteWifiData("/info.txt");
-    STconnect(STssid,STpwd);
+    String ssid=server.arg("ssid");
+    String pwd =server.arg("pwd");
+        if (ssid !=""){
+            if(ssid!=STssid || pwd !=STpwd){ //futur : if (pwd.length() >8 || pwd == ""){do things}else{"bad password"}
+            STssid=ssid;
+            STpwd=pwd;
+            WriteWifiData(InfoFile);
+            server.send(200, "text/json","[{\"apstate\":\"Connecting\"},{\"apname\":\""+STssid+"\"}]");
+            STconnect(STssid,STpwd);
+            }
+            else {
+              if ( WifiActive==true){
+              server.send(200, "text/json","[{\"apstate\":\""+wifistatestring[WiFi.status()]+"\"},{\"apname\":\""+STssid+"\"}]");
+              }
+              else {
+              server.send(200, "text/json","[{\"apstate\":\"Not connected\"},{\"apname\":\""+STssid+"\"}]");  
+              }
+            }
+        }
+        else {
+              if ( WifiActive==true){
+              server.send(200, "text/json","[{\"apstate\":\""+wifistatestring[WiFi.status()]+"\"},{\"apname\":\""+STssid+"\"}]");
+              }
+              else {
+              server.send(200, "text/json","[{\"apstate\":\"Not connected\"},{\"apname\":\""+STssid+"\"}]");  
+              }
+        }
+     
   });
 
 }
