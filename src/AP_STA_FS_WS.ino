@@ -22,6 +22,8 @@ String STssid;
 String STpwd;
 String WifiLastStatus;
 String InfoFile="/info.txt";
+String HomeFile="homeip.txt";
+String HomeIP;
 boolean WifiActive=false;
 
 const char* host = "switch";
@@ -29,7 +31,12 @@ uint8_t MAC_array[6];
 char MAC_char[18];
 const int R1PIN = 2;
 bool R1Status;
-IPAddress myIP;
+char myIPString[24];
+char mylocalIPString[24];
+char mysubnetMaskString[24];
+char mygatewayIPString[24];
+
+
 
 // Commands sent through Web Socket
 const char R1ON[] = "r1on\n";
@@ -72,7 +79,7 @@ String getContentType(String filename){
 }
 
 bool handleFileRead(String path){
-  Serial.println("handleFileRead: " + path);
+  //Serial.println("handleFileRead: " + path);
   if(path.endsWith("/")) path += "index.htm";
   String contentType = getContentType(path);
   String pathWithGz = path + ".gz";
@@ -115,13 +122,28 @@ void handleFileList() {
 
 void writeR1(bool Rstate){   //void writeRelay(bool Rstate,int RelayNumber) for multiple relays
   R1Status = Rstate;
-  // Note inverted logic for Adafruit HUZZAH board
+  // Note inverted logic depending on relay type
   if (Rstate) {
     digitalWrite(R1PIN, LOW);
   }
   else {
     digitalWrite(R1PIN, HIGH);
   }
+}
+
+int CurrentRead(){
+
+    int temp=0;
+    int maxAmp=0;
+    
+    for(int i=1; i<300; i++){
+    temp = analogRead(A0);
+    if (temp>maxAmp){maxAmp=temp;}
+    delayMicroseconds(100);
+    }
+  
+  //return (0.02354*maxAmp);
+  return (maxAmp);
 }
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length){
@@ -152,6 +174,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
       else if ((length == strlen(R1OFF)) && (memcmp(R1OFF, payload, strlen(R1OFF)) == 0)) {
         writeR1(false);
       }
+      // add else if readcurrent
       else {
         Serial.println("Unknown command");
       }
@@ -239,25 +262,27 @@ String wifistate(){
   return json;
   }
 
+void WifiToVars(){
+IPAddress myIP;
+IPAddress mylocalIP;
+IPAddress mysubnetMask;
+IPAddress mygatewayIP;
+   
+    myIP = WiFi.softAPIP();
+    sprintf(myIPString, "%d.%d.%d.%d", myIP[0], myIP[1], myIP[2], myIP[3]);
+    mylocalIP= WiFi.localIP();
+    sprintf(mylocalIPString, "%d.%d.%d.%d", mylocalIP[0], mylocalIP[1], mylocalIP[2], mylocalIP[3]);
+    mysubnetMask = WiFi.subnetMask();
+    sprintf(mysubnetMaskString, "%d.%d.%d.%d", mysubnetMask[0], mysubnetMask[1], mysubnetMask[2], mysubnetMask[3]);
+    mygatewayIP = WiFi.gatewayIP();
+    sprintf(mygatewayIPString, "%d.%d.%d.%d", mygatewayIP[0], mygatewayIP[1], mygatewayIP[2], mygatewayIP[3]); 
+}
+
 
   String wifiparam(){
 
-    char myIPString[24];
-    myIP = WiFi.softAPIP();
-    sprintf(myIPString, "%d.%d.%d.%d", myIP[0], myIP[1], myIP[2], myIP[3]);
+    WifiToVars();
     
-    char mylocalIPString[24];
-    IPAddress mylocalIP= WiFi.localIP();
-    sprintf(mylocalIPString, "%d.%d.%d.%d", mylocalIP[0], mylocalIP[1], mylocalIP[2], mylocalIP[3]);
-    
-    char mysubnetMaskString[24];
-    IPAddress mysubnetMask = WiFi.subnetMask();
-    sprintf(mysubnetMaskString, "%d.%d.%d.%d", mysubnetMask[0], mysubnetMask[1], mysubnetMask[2], mysubnetMask[3]);
-    
-    char mygatewayIPString[24];
-    IPAddress mygatewayIP = WiFi.gatewayIP();
-    sprintf(mygatewayIPString, "%d.%d.%d.%d", mygatewayIP[0], mygatewayIP[1], mygatewayIP[2], mygatewayIP[3]); 
-
     String json = "[{\"APip\":\""+String(myIPString)+"\"";
     json += ",\"APssid\":\""+APssid+"\"";
         if(WifiActive == true) {
@@ -287,15 +312,21 @@ String macstr() {
 
 String macaddress() {
     String json = "[";
-    json += "{Mac address : "  +String(MAC_char)+  "}]";
+    json += "[{\"Mac address\":\""+String(MAC_char)+  "\"}]";
+    return json;
+}
+
+String iotDBjson() {
+    String json = "{\"iotname\":\""+APssid+"\",";
+    json += "\"espid\":\""+String(MAC_char)+"\",";
+    json += "\"relay\":\""+String(R1Status)+"\",";
+    json += "\"localip\":\""+String(mylocalIPString)+"\",";
+    json += "\"current\":\""+String(CurrentRead())+"\"}";
     return json;
 }
 
 void APconnect(String ssid, String pwd){
 WiFi.softAP(ssid.c_str(), pwd.c_str());
-myIP = WiFi.softAPIP();
-Serial.print("AP IP address: ");
-Serial.println(myIP);
 }
 
 void STconnect(String ssid,String pwd){
@@ -387,6 +418,18 @@ void WriteWifiData(String filename){
   }
 }
 
+void WriteHomeData(String filename){
+  File f = SPIFFS.open(filename, "w");
+  if (!f) {
+      Serial.println("file open failed");
+  }
+  else {
+    f.println(HomeIP);
+    f.close();
+    Serial.println("file writed");
+  }
+}
+
 void setup(void){
 
   delay(100);
@@ -436,28 +479,50 @@ void setup(void){
   Serial.print("Module MAC address : ");
   Serial.println(macstr());
 
+  WifiToVars(); // Write the networks IP in the respective variables
+  Serial.print("AP IP address: ");
+  Serial.println(myIPString);
+
+// inclure le "All Inclusive json" dans toutes les réponses!
+
   server.onNotFound([](){if(!handleFileRead(server.uri()))server.send(404, "text/plain", "FileNotFound"); });
   server.on("/list", HTTP_GET, handleFileList);
   server.on("/aplist", HTTP_GET, [](){server.send(200, "text/json", wifiscan());});
   server.on("/apstate", HTTP_GET, [](){server.send(200, "text/json", wifistate());});
   server.on("/iotmac", HTTP_GET, [](){server.send(200, "text/json", macaddress());});
   server.on("/wifiparam", HTTP_GET, [](){server.send(200, "text/json", wifiparam());});
-  server.on("/analog", HTTP_GET, [](){server.send(200, "text/json", "[{\"analog read\":\""+String(analogRead(A0))+"\"}]");});
+  server.on("/analog", HTTP_GET, [](){server.send(200, "text/json", "[{\"analog read\":\""+String(CurrentRead())+"\"}]");});
+  server.on("/anal", HTTP_GET, [](){Serial.println(CurrentRead());server.send(200, "text/json","ok");});
+  
+  server.on("/handshake", HTTP_GET, [](){
+    if (server.args() != 0){
+      if (server.hasArg("iotname")){
+          if(server.arg("iotname")!=APssid){
+          APssid=server.arg("iotname");
+          }
+      }
+      //      if (server.hasArg("pwd" == true and server.arg("pwd")!=APpwd)){APpwd=server.arg("pwd");
+
+      if (server.hasArg("homeip")){
+      HomeIP = server.arg("homeip");
+      WriteHomeData(HomeFile);
+      WriteWifiData(InfoFile);
+      }
+      
+      
+    server.send(200, "text/json", iotDBjson());
+    APconnect(APssid,APpwd);
+  }});
 
   server.on("/relay", [](){ // Ready for multiple relays
     if (server.args() != 0){
       if (server.hasArg("r1")){
-        if (server.arg("r1")=="") {server.send(200, "text/json","[{\"r1\":\""+String(R1Status)+"\"}]");}
-        if (server.arg("r1")=="on"){
-          writeR1(HIGH);
-          server.send(200, "text/json","[{\"r1\":\""+String(R1Status)+"\"}]");
-        }
-        if (server.arg("r1")=="off"){
-          writeR1(LOW);
-          server.send(200, "text/json","[{\"r1\":\""+String(R1Status)+"\"}]");}
+        if (server.arg("r1")=="on"){writeR1(HIGH);}
+        if (server.arg("r1")=="off"){writeR1(LOW);}
         }
     }
-  });
+    server.send(200, "text/json",iotDBjson());
+    });
   
   server.on("/iotname", [](){ 
     if (server.args() != 0 && server.arg("name")!="" ){
@@ -487,6 +552,7 @@ void setup(void){
             WriteWifiData(InfoFile);
             server.send(200, "text/json","[{\"apstate\":\"Connecting\"},{\"apname\":\""+STssid+"\"}]");
             STconnect(STssid,STpwd);
+            WifiToVars(); // update wifi IPs
             }
             else {
               if ( WifiActive==true){
