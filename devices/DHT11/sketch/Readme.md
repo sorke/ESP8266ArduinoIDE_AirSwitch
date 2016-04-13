@@ -1,1 +1,1 @@
-Basic sketch that print temperature and humidity to serial
+Basic sketch that prints temperature and humidity to serial
