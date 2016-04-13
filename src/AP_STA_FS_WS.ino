@@ -8,6 +8,10 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 #include <FS.h>
+#include <dht11.h>
+
+dht11 DHT;
+#define DHT11_PIN 4
 
 //ajouter id unique pour chaque retour de json ?
 
@@ -17,12 +21,12 @@ const char* initSTpwd = "46600000";
 const char* initAPssid = "Light Switch";
 const char* initAPpwd = "12345678";
 String APssid;
-String APpwd; //pkoi le pwd n'est pas ok ? histoir de eol ? retour chariot?
+String APpwd;
 String STssid;
 String STpwd;
 String WifiLastStatus;
 String InfoFile="/info.txt";
-String HomeFile="homeip.txt";
+String HomeFile="/homeip.txt";
 String HomeIP;
 boolean WifiActive=false;
 
@@ -35,6 +39,7 @@ char myIPString[24];
 char mylocalIPString[24];
 char mysubnetMaskString[24];
 char mygatewayIPString[24];
+int chk; // State of the DHT11 sensor (values are more reliable when chk is declared outside the voids)
 
 
 
@@ -489,10 +494,30 @@ void setup(void){
   server.on("/list", HTTP_GET, handleFileList);
   server.on("/aplist", HTTP_GET, [](){server.send(200, "text/json", wifiscan());});
   server.on("/apstate", HTTP_GET, [](){server.send(200, "text/json", wifistate());});
-  server.on("/iotmac", HTTP_GET, [](){server.send(200, "text/json", macaddress());});
+  server.on("/iotmac", HTTP_GET, [](){server.send(200, "text/json", iotDBjson());});
   server.on("/wifiparam", HTTP_GET, [](){server.send(200, "text/json", wifiparam());});
-  server.on("/analog", HTTP_GET, [](){server.send(200, "text/json", "[{\"analog read\":\""+String(CurrentRead())+"\"}]");});
-  server.on("/anal", HTTP_GET, [](){Serial.println(CurrentRead());server.send(200, "text/json","ok");});
+  server.on("/analog", HTTP_GET, [](){server.send(200, "text/json",iotDBjson());});
+  server.on("/dht", HTTP_GET, [](){
+          chk = DHT.read(DHT11_PIN);    // READ DATA
+            switch (chk){
+              case DHTLIB_OK:  
+                          Serial.print("OK,\t"); 
+                          server.send(200, "text/json","{\"Temp\":\""+String(DHT.temperature)+",\"Hum\":\""+String(DHT.humidity)+"\"}");
+                          break;
+              case DHTLIB_ERROR_CHECKSUM: 
+                          Serial.print("Checksum error,\t");
+                          server.send(200, "text/json","{\"Temp\":\"error\",\"Hum\":\"error\"}");
+                          break;
+              case DHTLIB_ERROR_TIMEOUT: 
+                          Serial.print("Time out error,\t");
+                          server.send(200, "text/json","{\"Temp\":\"error\",\"Hum\":\"error\"}");
+                          break;
+              default: 
+                          Serial.print("Unknown error,\t");
+                          server.send(200, "text/json","{\"Temp\":\"error\",\"Hum\":\"error\"}");
+                          break;
+            }
+    });
   
   server.on("/handshake", HTTP_GET, [](){
     if (server.args() != 0){
@@ -535,10 +560,10 @@ void setup(void){
         server.send(200, "text/json","[{\"iotname\":\""+APssid+"\"}]"); 
         WiFi.softAP(newAPname.c_str(), APpwd.c_str());
         }
-    server.send(200, "text/json","[{\"iotname\":\""+APssid+"\"}]");
+    server.send(200, "text/json",iotDBjson());
     }
     else{
-    server.send(200, "text/json","[{\"iotname\":\""+APssid+"\"}]");
+    server.send(200, "text/json",iotDBjson());
     }
   });
 
