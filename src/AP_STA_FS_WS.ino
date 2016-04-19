@@ -36,6 +36,13 @@ boolean homeClientConnected = false;
 os_timer_t myTimer;
 bool tickOccured;
 
+const int ledRed = 14;      // the number of the LED pins
+const int ledBlue = 13;
+const int ledGreen = 12;
+// color = [black,red,green,blue,cyan,purple,yellow]
+const int color[7][3]={{0,0,0},{500,0,0},{0,500,0},{0,0,500},{0,500,500},{300,0,500},{300,500,0}};
+
+
 const char* host = "switch";
 uint8_t MAC_array[6];
 char MAC_char[18];
@@ -105,6 +112,13 @@ bool handleFileRead(String path) {
     return true;
   }
   return false;
+}
+
+
+void RGB(int colorNum){
+ analogWrite(ledRed,color[colorNum][0]);
+ analogWrite(ledGreen,color[colorNum][1]);
+ analogWrite(ledBlue,color[colorNum][2]);
 }
 
 
@@ -452,12 +466,16 @@ void timerCallback(void *pArg) {
 void setup(void) {
 
   delay(100);
+  pinMode(ledRed, OUTPUT);
+  pinMode(ledBlue, OUTPUT);
+  pinMode(ledGreen, OUTPUT);
   pinMode(R1PIN, OUTPUT);
   digitalWrite(R1PIN, HIGH);
+  
   pinMode(A0, INPUT);
   Serial.begin(115200);
   Serial.print("\n");
-  
+
 
 
 
@@ -527,6 +545,15 @@ void setup(void) {
   server.on("/analog", HTTP_GET, []() {
     server.send(200, "text/json", iotDBjson());
   });
+  server.on("/rgb", HTTP_GET, []() {
+    if (server.args() != 0) {
+      if (server.hasArg("color")) { // add a bug protection if values are not between 0 and 7
+            RGB(server.arg("color").toInt());
+      }
+      server.send(200, "text/json", iotDBjson());
+    }
+  });
+  
   server.on("/dht", HTTP_GET, []() {
     chk = DHT.read(DHT11_PIN);    // READ DATA
     switch (chk) {
