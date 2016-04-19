@@ -56,7 +56,7 @@ int chk; // State of the DHT11 sensor (values are more reliable when chk is decl
 int clientTimeout=0;
 
 WiFiClient homeclient;
-String homeurl = "caca.php?id=jean";
+String homeurl = "index.php"; //  ?espid=mac"; ajouter l'équivalent du dataIotJson sous forme d'arguments du GET
 
 // Commands sent through Web Socket
 const char R1ON[] = "r1on\n";
@@ -354,6 +354,15 @@ String iotDBjson() {
   return json;
 }
 
+String iotDBget() {
+  String DBget = "?iotname=" + APssid;
+  DBget += "&espid=" + String(MAC_char);
+  DBget += "&relay=" + String(R1Status);
+  DBget += "&localip=" + String(mylocalIPString);
+  DBget += "&current=" + String(CurrentRead());
+  return DBget;
+}
+
 void APconnect(String ssid, String pwd) {
   WiFi.softAP(ssid.c_str(), pwd.c_str());
 }
@@ -362,6 +371,7 @@ void STconnect(String ssid, String pwd) {
   Serial.print("Connecting to : ");
   Serial.println(ssid);
   WiFi.begin(ssid.c_str(), pwd.c_str());
+  RGB(1);
   int i = 0;
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -375,6 +385,7 @@ void STconnect(String ssid, String pwd) {
       WifiActive = false;
       WiFi.disconnect();
       WiFi.mode(WIFI_AP);
+      RGB(0);
       break;
     }
   }
@@ -386,6 +397,7 @@ void STconnect(String ssid, String pwd) {
     Serial.println(ssid);
     Serial.print("Open http://");
     Serial.println(WiFi.localIP());
+    RGB(2);
   }
 }
 
@@ -660,7 +672,12 @@ void setup(void) {
     }
 
   });
-
+  // Connection to Home      -- Keep alive issues ? ------------------------------------------ to do -------------------------------------------
+  
+// if homeip!="" (in a home.txt file )
+// sendDataClient()
+// wait 5s for response
+// if data=sent then blueled et home=connecté
 
   //Timer init
   tickOccured = false;
@@ -706,7 +723,7 @@ void listenClient(){
 }
 
 void sendDataClient(){
-    if (!homeClientConnected){
+    if (homeClientConnected==false &&  WifiActive == true){
             if (!homeclient.connect(homeip, 8080)) { 
             Serial.println("connection failed to home ip as client");
             return;
@@ -716,7 +733,7 @@ void sendDataClient(){
     Serial.println(homeurl);
           
     // This will send the request to the server
-    homeclient.print(String("GET ") + homeurl + " HTTP/1.1\r\n" +
+    homeclient.print(String("GET ") + homeurl + iotDBget() +  " HTTP/1.1\r\n" +
                  "Host: " + homeip + "\r\n" + 
                  "Connection: close\r\n\r\n");
    clientTimeout=0;
