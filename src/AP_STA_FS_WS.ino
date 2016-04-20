@@ -4,7 +4,7 @@
 #include <Hash.h>
 #include <WebSocketsServer.h>
 #include <ESP8266WiFi.h>
-#include <WiFiClient.h>
+//#include <WiFiClient.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 #include <FS.h>
@@ -29,7 +29,8 @@ String STssid;
 String STpwd;
 String WifiLastStatus;
 String InfoFile = "/info.txt";
-String HomeFile = "/homeip.txt";
+String HomeFile = "/home.txt";
+String HomeName = "dub's house";
 String HomeIP;
 boolean WifiActive = false;
 boolean homeClientConnected = false;
@@ -120,7 +121,6 @@ void RGB(int colorNum){
  analogWrite(ledGreen,color[colorNum][1]);
  analogWrite(ledBlue,color[colorNum][2]);
 }
-
 
 void handleFileList() {
   //if(!server.hasArg("dir")) {server.send(500, "text/plain", "BAD ARGS"); return;}
@@ -307,7 +307,6 @@ void WifiToVars() {
   sprintf(mygatewayIPString, "%d.%d.%d.%d", mygatewayIP[0], mygatewayIP[1], mygatewayIP[2], mygatewayIP[3]);
 }
 
-
 String wifiparam() {
 
   WifiToVars();
@@ -364,7 +363,7 @@ String iotDBget() {
 }
 
 void APconnect(String ssid, String pwd) {
-  WiFi.softAP(ssid.c_str(), pwd.c_str());
+ WiFi.softAP(ssid.c_str(), pwd.c_str());
 }
 
 void STconnect(String ssid, String pwd) {
@@ -399,6 +398,10 @@ void STconnect(String ssid, String pwd) {
     Serial.println(WiFi.localIP());
     RGB(2);
   }
+}
+void HomeConnect(const char* ipadd){
+
+  
 }
 
 void MDNSstart(const char* h, IPAddress IP) {
@@ -459,13 +462,29 @@ void WriteWifiData(String filename) {
   }
 }
 
-void WriteHomeData(String filename) {
+
+void WriteSerialData(String filename, String data) {
   File f = SPIFFS.open(filename, "w");
   if (!f) {
     Serial.println("file open failed");
   }
   else {
+    f.println(data);
+    f.close();
+    Serial.println("file writed");
+  }
+}
+
+void WriteHomeData(String filename) {
+
+  File f = SPIFFS.open(HomeFile, "w");
+  if (!f) {
+    Serial.println("file open failed");
+  }
+  else {
     f.println(HomeIP);
+    f.println(HomeName);
+    //f.write((uint8_t *)HomeIP.c_str(), HomeIP.length());
     f.close();
     Serial.println("file writed");
   }
@@ -557,6 +576,20 @@ void setup(void) {
   server.on("/analog", HTTP_GET, []() {
     server.send(200, "text/json", iotDBjson());
   });
+  server.on("/fr", HTTP_GET, []() {
+      File f = SPIFFS.open("/home.txt", "r");
+  if (!f) {
+    Serial.println("Wifi file failed to open");
+  }
+  else {
+  Serial.print(f.readStringUntil('\r'));
+  Serial.print(f.readStringUntil('\r'));
+  Serial.print(f.readStringUntil('\r'));
+  Serial.print(f.readStringUntil('\r'));
+      f.close();
+  }
+  });
+
   server.on("/rgb", HTTP_GET, []() {
     if (server.args() != 0) {
       if (server.hasArg("color")) { // add a bug protection if values are not between 0 and 7
@@ -589,23 +622,34 @@ void setup(void) {
   });
 
   server.on("/handshake", HTTP_GET, []() {
+    boolean change=false;
     if (server.args() != 0) {
       if (server.hasArg("iotname")) {
         if (server.arg("iotname") != APssid) {
           APssid = server.arg("iotname");
+          change = true;
         }
       }
       //      if (server.hasArg("pwd" == true and server.arg("pwd")!=APpwd)){APpwd=server.arg("pwd");
 
       if (server.hasArg("homeip")) {
+        if (server.arg("homeip")!=HomeIP) {
         HomeIP = server.arg("homeip");
-        WriteHomeData(HomeFile);
-        WriteWifiData(InfoFile);
+        change = true;
+        }
       }
-
-
+      if (server.hasArg("homename")) {
+        if (server.arg("homename")!=HomeName) {
+        HomeName = server.arg("homename");
+        change = true;
+        }
+      }
       server.send(200, "text/json", iotDBjson());
+      if(change){
+      WriteHomeData(HomeFile);
+      WriteWifiData(InfoFile);
       APconnect(APssid, APpwd);
+      }
     }
   });
 
@@ -674,15 +718,13 @@ void setup(void) {
   });
   // Connection to Home      -- Keep alive issues ? ------------------------------------------ to do -------------------------------------------
   
-// if homeip!="" (in a home.txt file )
-// sendDataClient()
-// wait 5s for response
-// if data=sent then blueled et home=connecté
-
   //Timer init
   tickOccured = false;
   os_timer_setfn(&myTimer, timerCallback, NULL);
   os_timer_arm(&myTimer, 5000, true);
+
+  // Look for home connection
+  sendDataClient();
 
 }
 
@@ -699,18 +741,29 @@ void loop(void) {
      }
      
    listenClient();
+   
+  if (Serial.available() > 0) {
+    String sdata = Serial.readString();
+    Serial.println(sdata);
+    WriteSerialData("/Serial.txt",sdata);
+  }
+   
 
 
 yield(); //humhum?!
 }
 
-void listenClient(){
+void listenClient(){ //remplacer par un server.on
     if (homeclient.available()){
     String line = homeclient.readStringUntil('\r');
+  Serial.println(line);
     int a= line.indexOf('"data":');
     String response = line.substring(a+2,a+4);
       if (response=="ok"){
-      Serial.println("Data received");
+      homeClientConnected=true;
+      RGB(3);
+      Serial.println("Data received : Home connected");
+      
       }
     homeClientConnected=false;
     clientTimeout=0;
@@ -718,7 +771,9 @@ void listenClient(){
     if(clientTimeout>3){
     homeClientConnected=false;
     clientTimeout=0;
-    Serial.println("Client timeout");
+    RGB(0);
+    
+    Serial.println("Client timeout : Home disconnected");
     }
 }
 
@@ -726,6 +781,8 @@ void sendDataClient(){
     if (homeClientConnected==false &&  WifiActive == true){
             if (!homeclient.connect(homeip, 8080)) { 
             Serial.println("connection failed to home ip as client");
+            homeClientConnected =true;
+            RGB(0);
             return;
             }
     homeClientConnected =true;    
@@ -739,3 +796,7 @@ void sendDataClient(){
    clientTimeout=0;
     }
 }
+
+
+
+
