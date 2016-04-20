@@ -1,4 +1,4 @@
-# EspArduinoIDE_LightSwitch
+# EspArduinoIDE_AirSwitch
 Arduino Sketch for an IOT plug
 
 I used the git version of the esp8266 core for the Arduino IDE :
