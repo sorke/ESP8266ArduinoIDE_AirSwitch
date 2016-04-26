@@ -32,6 +32,19 @@ h2 {
   padding: 10px 20px 10px 20px;
   text-decoration: none;
 }
+.smallbtn {
+
+  -webkit-border-radius: 18;
+  -moz-border-radius: 18;
+  border-radius: 18px;
+  font-family: Arial;
+  font-weight: bold;
+  color: #ffff;
+  font-size: 12px;
+  background: #855;
+  padding: 5px 10px 5px 10px;
+  text-decoration: none;
+}
 
 .btn:hover {
   background: #3cb0fd;
@@ -48,7 +61,7 @@ h2 {
 <h1>Config</h1></br></br>
 <div >
 <table align=center>
-<tr><td align=left><b>Module name : </b></td><td id="APssid"></td></tr>
+<tr><td align=left><b>Module name : </b></td><td id="APssid"></td><td><p><a class="smallbtn" id='btc1' onclick="btchangeAPssid();">Change</a></p></td></tr>
 <tr><td align=left><b>Module IP : </b></td><td id="APip"></td></tr>
 <tr><td align=left><b>Module mac : </b></td><td id="mac"></td></tr>
 <tr><td align=left><b>Access point name: </b></td><td id="STssid"></td></tr>
@@ -59,13 +72,16 @@ h2 {
 </table>
 </div>
 </br></br></br></br>
-<p><a class="btn" id='bt1' onclick="btconfig();">Back</a></p>
+<p><a class="btn" id='bt1' onclick="btback();">Back</a> &emsp;<a class="btn" id='bt2' onclick="btapconnect();">Access points</a></p>
 
 </body>
 
 <script>
-    function btconfig(){
+    function btback(){
     window.location.href = '/index.htm';
+    }
+    function btapconnect(){
+    window.location.href = '/netconn.htm';
     }
 
     function getjson(theUrl) // the synchronous mode is deprecated in firefox
@@ -86,14 +102,14 @@ h2 {
 }
 
 wifiparam=getjson("wifiparam")
-document.getElementById("APip").innerHTML =wifiparam[0].APip;
-document.getElementById("APssid").innerHTML =wifiparam[0].APssid;
-document.getElementById("STssid").innerHTML =wifiparam[0].STssid;
-document.getElementById("state").innerHTML = wifiparam[0].state;
-document.getElementById("localip").innerHTML =wifiparam[0].localip;
-document.getElementById("netip").innerHTML =wifiparam[0].netmaskip;
-document.getElementById("gatewayip").innerHTML = wifiparam[0].gatewayip;
-document.getElementById("mac").innerHTML = wifiparam[0].mac;
+document.getElementById("APip").innerHTML =wifiparam.APip;
+document.getElementById("APssid").innerHTML =wifiparam.APssid;
+document.getElementById("STssid").innerHTML =wifiparam.STssid;
+document.getElementById("state").innerHTML = wifiparam.state;
+document.getElementById("localip").innerHTML =wifiparam.localip;
+document.getElementById("netip").innerHTML =wifiparam.netmaskip;
+document.getElementById("gatewayip").innerHTML = wifiparam.gatewayip;
+document.getElementById("mac").innerHTML = wifiparam.mac;
 
 </script>
 

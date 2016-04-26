@@ -1,4 +1,2 @@
-APssid
-APpwd
-STssid
-STpwd
+AirSwitch
+12345678
