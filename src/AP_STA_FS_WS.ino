@@ -7,11 +7,11 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 #include <FS.h>
-#include <dht11.h>
+#include <dht11.h> // the DHT11 needs power to read temperature and humidity, the arduino 3.3v is not sufficent
 #include "user_interface.h" //for timer purpose
 
 dht11 DHT;
-#define DHT11_PIN 4
+#define DHT11_PIN 10
 
 String wifistatestring[7] = {"Inactive", "No SSID available", "Scan completed", "Connected", "Connection failed", "Connection lost", "Connecting"};
 const char* initSTssid = "ES_2590";
@@ -44,7 +44,7 @@ const int ledRed = 14;      // the number of the LED pins
 const int ledBlue = 13;
 const int ledGreen = 12;
 // color = [black,red,green,blue,cyan,purple,yellow]
-// pwm is flickering when using more than 2 outputs at the same time
+// pwm is flickering when using more than 2 outputs at the same time. Edit : no flickering when current is enough! 
 const int color[7][3]={{0,0,0},{500,0,0},{0,500,0},{0,0,500},{0,500,500},{300,0,500},{300,500,0}};
 
 const char* host = "switch";
@@ -378,7 +378,7 @@ String dhtjson() {
 }
 
 String currentjson() {
-  String json = "{\"current\":\"" + tempDht +  "\"}";
+  String json = "{\"current\":\"" + String(currentValue) +  "\"}";
   return json;
 }
 
