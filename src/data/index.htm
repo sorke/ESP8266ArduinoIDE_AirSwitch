@@ -97,21 +97,80 @@ var websock;
 	websock.onmessage = function(evt) {
 	console.log(evt);
 
-	if (evt.data === 'r1on\n') {
-	var e = document.getElementById('led0');
-	e.style.display = 'none';
-	var e = document.getElementById('led1');
-	e.style.display = '';
-	var e = document.getElementById('cb1');
-	e.checked = true;
-	}
-	else if (evt.data === 'r1off\n') {
-	var e = document.getElementById('led1');
-	e.style.display = 'none';
-	var e = document.getElementById('led0');
-	e.style.display = '';
-	var e = document.getElementById('cb1');
-	e.checked = false;
+	switch(evt.data){
+		
+		case 'r1on\n':
+		var e = document.getElementById('r1led0');
+		e.style.display = 'none';
+		var e = document.getElementById('r1led1');
+		e.style.display = '';
+		var e = document.getElementById('cb1');
+		e.checked = true;
+		break;
+		
+		case 'r1off\n':
+		var e = document.getElementById('r1led1');
+		e.style.display = 'none';
+		var e = document.getElementById('r1led0');
+		e.style.display = '';
+		var e = document.getElementById('cb1');
+		e.checked = false;
+		break;
+		
+		case 'r2on\n':
+		var e = document.getElementById('r1led0');
+		e.style.display = 'none';
+		var e = document.getElementById('r1led1');
+		e.style.display = '';
+		var e = document.getElementById('cb1');
+		e.checked = true;
+		break;
+		
+		case 'r2off\n':
+		var e = document.getElementById('r1led1');
+		e.style.display = 'none';
+		var e = document.getElementById('r1led0');
+		e.style.display = '';
+		var e = document.getElementById('cb1');
+		e.checked = false;
+		break;
+		
+		case 'r3on\n':
+		var e = document.getElementById('r1led0');
+		e.style.display = 'none';
+		var e = document.getElementById('r1led1');
+		e.style.display = '';
+		var e = document.getElementById('cb1');
+		e.checked = true;
+		break;
+		
+		case 'r3off\n':
+		var e = document.getElementById('r1led1');
+		e.style.display = 'none';
+		var e = document.getElementById('r1led0');
+		e.style.display = '';
+		var e = document.getElementById('cb1');
+		e.checked = false;
+		break;
+		
+		case 'r4on\n':
+		var e = document.getElementById('r1led0');
+		e.style.display = 'none';
+		var e = document.getElementById('r1led1');
+		e.style.display = '';
+		var e = document.getElementById('cb1');
+		e.checked = true;
+		break;
+		
+		case 'r4off\n':
+		var e = document.getElementById('r1led1');
+		e.style.display = 'none';
+		var e = document.getElementById('r1led0');
+		e.style.display = '';
+		var e = document.getElementById('cb1');
+		e.checked = false;
+		break;
+	
 	}
 
 	// add Currentread routine
