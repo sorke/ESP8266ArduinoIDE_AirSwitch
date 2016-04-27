@@ -55,29 +55,76 @@ h1{
     box-shadow: #AAA 0 -1px 7px 1px, inset #EEE 0 -1px 9px, #777 0 2px 0px;
 }
 
+.marge {
+margin-left: 32%;
+}
+
+.float-table{ 
+width: 700px;
+ } 
+
 </style>
 </head>
 
-<body onload=\javascript:start();\>
+<body onload="start()">
 
-	</br>
-	<h1>Light switch</h1></br></br>
+	<br>
+	<h1>Light switch</h1><br><br>
 
-	<div class="led-green" id='led1'></div>
-	<div class="led-gray" id='led0'></div>
 
-	</br></br>
-	<table align='center'>
+
+	<br><br>
+	<table align='center' class='float-table'>
 		<td>
-	<div id='relay1status' >
+	<div class="led-green" id='r1led1'></div>
+	<div class="led-gray" id='r1led0'></div>
+			
+	<div id='relay1status' class='marge'>
+		  <br>
 		  <input class='tgl tgl-light' id='cb1' onclick="buttonclick(this);" type='checkbox'>
 		  <label class='tgl-btn' for='cb1'></label>
 	</div>
+			
+		</td>
+		<td>
+	<div class="led-green" id='r2led1'></div>
+	<div class="led-gray" id='r2led0'></div>
+			
+	<div id='relay2status' class='marge'>
+		  <br>
+		  <input class='tgl tgl-light' id='cb2' onclick="buttonclick(this);" type='checkbox'>
+		  <label class='tgl-btn' for='cb2'></label>
+	</div>
+			
+		</td>
+		<td>
+	<div class="led-green" id='r3led1'></div>
+	<div class="led-gray" id='r3led0'></div>
+			
+	<div id='relay3status' class='marge'>
+		  <br>
+		  <input class='tgl tgl-light' id='cb3' onclick="buttonclick(this);" type='checkbox'>
+		  <label class='tgl-btn' for='cb3'></label>
+	</div>
+			
+		</td>
+		<td>
+	<div class="led-green" id='r4led1'></div>
+	<div class="led-gray" id='r4led0'></div>
+			
+	<div id='relay4status' class='marge'>
+		  <br>
+		  <input class='tgl tgl-light' id='cb4' onclick="buttonclick(this);" type='checkbox'>
+		  <label class='tgl-btn' for='cb4'></label>
+	</div>
+			
 		</td>
 	</table>
-	</br></br></br></br>
+
+
+	<br><br><br><br>
 	<p><a class="btn" id='bt1' onclick="btconfig();">Parameters</a></p>
-</body>
+
 
 <script>
 	function btconfig(){
@@ -85,7 +132,13 @@ h1{
 	}
 
 
-	var e = document.getElementById('led1');
+	var e = document.getElementById('r1led1');
+	e.style.display = 'none';
+	var e = document.getElementById('r2led1');
+	e.style.display = 'none';
+	var e = document.getElementById('r3led1');
+	e.style.display = 'none';
+	var e = document.getElementById('r4led1');
 	e.style.display = 'none';
 
 var websock;
@@ -118,78 +171,81 @@ var websock;
 		break;
 		
 		case 'r2on\n':
-		var e = document.getElementById('r1led0');
+		var e = document.getElementById('r2led0');
 		e.style.display = 'none';
-		var e = document.getElementById('r1led1');
+		var e = document.getElementById('r2led1');
 		e.style.display = '';
-		var e = document.getElementById('cb1');
+		var e = document.getElementById('cb2');
 		e.checked = true;
 		break;
 		
 		case 'r2off\n':
-		var e = document.getElementById('r1led1');
+		var e = document.getElementById('r2led1');
 		e.style.display = 'none';
-		var e = document.getElementById('r1led0');
+		var e = document.getElementById('r2led0');
 		e.style.display = '';
-		var e = document.getElementById('cb1');
+		var e = document.getElementById('cb2');
 		e.checked = false;
 		break;
 		
 		case 'r3on\n':
-		var e = document.getElementById('r1led0');
+		var e = document.getElementById('r3led0');
 		e.style.display = 'none';
-		var e = document.getElementById('r1led1');
+		var e = document.getElementById('r3led1');
 		e.style.display = '';
-		var e = document.getElementById('cb1');
+		var e = document.getElementById('cb3');
 		e.checked = true;
 		break;
 		
 		case 'r3off\n':
-		var e = document.getElementById('r1led1');
+		var e = document.getElementById('r3led1');
 		e.style.display = 'none';
-		var e = document.getElementById('r1led0');
+		var e = document.getElementById('r3led0');
 		e.style.display = '';
-		var e = document.getElementById('cb1');
+		var e = document.getElementById('cb3');
 		e.checked = false;
 		break;
 		
 		case 'r4on\n':
-		var e = document.getElementById('r1led0');
+		var e = document.getElementById('r4led0');
 		e.style.display = 'none';
-		var e = document.getElementById('r1led1');
+		var e = document.getElementById('r4led1');
 		e.style.display = '';
-		var e = document.getElementById('cb1');
+		var e = document.getElementById('cb4');
 		e.checked = true;
 		break;
 		
 		case 'r4off\n':
-		var e = document.getElementById('r1led1');
+		var e = document.getElementById('r4led1');
 		e.style.display = 'none';
-		var e = document.getElementById('r1led0');
+		var e = document.getElementById('r4led0');
 		e.style.display = '';
-		var e = document.getElementById('cb1');
+		var e = document.getElementById('cb4');
 		e.checked = false;
 		break;
-	
+
+		default:
+		console.log('unknown event');
 	}
 
 	// add Currentread routine
-	else {
-	console.log('unknown event');
-	}
+
 	};
 	}
 
 	function buttonclick(e) {
 		
 	if (e.checked === true) {
-	var s ='r1on\n'; }
+
+	var s ='r'+e.id.substring(2, 3)+'on\n'; }
 	if (e.checked === false) {
-	var s ='r1off\n'; }
+	var s ='r'+e.id.substring(2, 3)+'off\n'; }
 
 	websock.send(s);
 	}
 
 start();
 </script>
+</body>
 </html>
+
