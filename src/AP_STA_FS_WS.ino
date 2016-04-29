@@ -14,11 +14,11 @@ dht11 DHT;
 #define DHT11_PIN 10
 
 String wifistatestring[7] = {"Inactive", "No SSID available", "Scan completed", "Connected", "Connection failed", "Connection lost", "Connecting"};
-const char* initSTssid = "ES_2590";
-const char* initSTpwd = "46600000";
+const char* initSTssid = "NUMERICABLE-3DA4";
+const char* initSTpwd = "BJX57NGKBW"; // Reading file error on STssid
 const char* initAPssid = "Light Switch";
 const char* initAPpwd = "12345678";
-const char* homeip = "192.168.43.1";
+//const char* homeip = "192.168.0.11"; // host must be live updated and homeip != HomeIP ?
 String APssid;
 String APpwd;
 String STssid;
@@ -258,7 +258,7 @@ void dhtRead() {
 }
 
 //------------ Internal file handling
-void ReadWifiData(String filename) {
+void readWifiData(String filename) {
   File f = SPIFFS.open(filename, "r");
   if (!f) {
     Serial.println("Wifi parameters file failed to open");
@@ -284,6 +284,8 @@ void ReadWifiData(String filename) {
   if (STssid.length() < 1) {
     STssid = initSTssid;
     STpwd = initSTpwd;
+    Serial.println(STssid);
+    Serial.println(STpwd);
   }
 }
 
@@ -313,8 +315,23 @@ void WriteSerialData(String filename, String data) {
     Serial.println("file writed");
   } //writes serial data to a file
 }
+void readHomeData(String filename) {
+  File f = SPIFFS.open(filename, "r");
+  if (!f) {
+    Serial.println("Home parameters file failed to open");
+  }
+  else {
+    HomeIP = f.readStringUntil('\n');
+    HomeIP = HomeIP.substring(0, HomeIP.length() - 1);
+    HomeName = f.readStringUntil('\n');
+    HomeName = HomeName.substring(0, HomeName.length() - 1);
+    f.close();
+  }
+  
+}
 
-void WriteHomeData(String filename) {
+
+void writeHomeData(String filename) {
 
   File f = SPIFFS.open(HomeFile, "w");
   if (!f) {
@@ -390,7 +407,7 @@ String wifiparam() {
         if (WifiActive == true) {
           json += ",\"state\":\"" + wifistatestring[WiFi.status()] + "\"";
           json += ",\"STssid\":\"" + String(WiFi.SSID()) + "\"";
-        }
+          }
         else {
           json += ",\"state\":\"" + WifiLastStatus + "\"";
           json += ",\"STssid\":\"" + STssid + "\"";
@@ -441,7 +458,7 @@ String iotDBjson() {
   return json;
 }
 
-String iotDBoldget() { // the old way of sending GET request
+String iotDBget() { // the old way of sending GET request
   String DBget = "?iotname=" + APssid;
   DBget += "&iotid=" + String(MAC_char);
   DBget += "&r1=" + String(R1Status);
@@ -455,7 +472,7 @@ String iotDBoldget() { // the old way of sending GET request
   return DBget;
 }
 
-String iotDBget() { // the new way of sending GET request has this shape : HomeIP/iotname/iotid/r1/r2/r3/r4/localip/current/temperature/humidity
+String iotDBnewget() { // the new way of sending GET request has this shape : HomeIP/iotname/iotid/r1/r2/r3/r4/localip/current/temperature/humidity
   String DBget = "/" + APssid;
   DBget += "/" + String(MAC_char);
   DBget += "/" + String(R1Status);
@@ -518,7 +535,7 @@ void STconnect(String ssid, String pwd) {
     delay(500);
     Serial.print(WiFi.status());
     i++;
-    if (i > 20) {
+    if (i > 30) {
       Serial.println("");
       Serial.print("Connection failed : ");
       WifiLastStatus = wifistatestring[WiFi.status()];
@@ -703,7 +720,10 @@ void setup(void) {
       }
 
     // --------------- Connection to server and access point start
-    ReadWifiData(InfoFile);
+    readWifiData(InfoFile);
+    readHomeData(HomeFile);
+    Serial.println(STssid);
+    Serial.println(STpwd);
     STconnect(STssid, STpwd);
     APconnect(APssid, APpwd);
     MDNSstart(host, WiFi.localIP());
@@ -772,7 +792,7 @@ void setup(void) {
         }
         server.send(200, "text/json", iotDBjson());
         if(change){
-        WriteHomeData(HomeFile);
+        writeHomeData(HomeFile);
         WriteWifiData(InfoFile);
         APconnect(APssid, APpwd);
         }
@@ -908,7 +928,7 @@ listenClient(); // can't be moved before the timer feature
 }
 
 //-------------- Home connection handling as a server to client
-void listenClient() { // il serait mieux de le remplacer par un "server.on"?
+void listenClient() { // il serait mieux de le remplacer par un "server.on"? ne fonctionne pas sur numericable
     if (homeclient.available()){
     String line = homeclient.readStringUntil('\r');
     int a= line.indexOf('"data":');
@@ -933,8 +953,8 @@ void listenClient() { // il serait mieux de le remplacer par un "server.on"?
 }
 
 void sendDataClient() { //Equivalent to "home connect"
-    if (homeClientConnected==false &&  WifiActive == true){
-            if (!homeclient.connect(homeip, 8080)) { 
+      if (homeClientConnected==false &&  WifiActive == true){
+            if (!homeclient.connect(HomeIP.c_str(), 8080)) {
             Serial.println("connection failed to home ip as client");
             homeClientConnected =true;
             RGB(0);
@@ -946,7 +966,7 @@ void sendDataClient() { //Equivalent to "home connect"
           
     // This will send the request to the server
     homeclient.print(String("GET ") + homeurl + iotDBget() +  " HTTP/1.1\r\n" +
-                 "Host: " + homeip + "\r\n" + 
+                 "Host: " + HomeIP + "\r\n" + 
                  "Connection: close\r\n\r\n");
    clientTimeout=0;
     }
