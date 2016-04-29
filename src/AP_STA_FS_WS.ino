@@ -43,15 +43,21 @@ int currentValue; // why not float?
 const int ledRed = 14;      // the number of the LED pins
 const int ledBlue = 13;
 const int ledGreen = 12;
-// color = [black,red,green,blue,cyan,purple,yellow]
+// color = [black,red,green,blue,cyan,purple,yellow,white]
 // pwm is flickering when using more than 2 outputs at the same time. Edit : no flickering when current is enough! 
-const int color[7][3]={{0,0,0},{500,0,0},{0,500,0},{0,0,500},{0,500,500},{300,0,500},{300,500,0}};
+const int color[8][3]={{0,0,0},{500,0,0},{0,500,0},{0,0,500},{0,500,500},{300,0,500},{300,500,0},{300,500,500}};
 
 const char* host = "switch";
 uint8_t MAC_array[6];
 char MAC_char[18];
-const int R1PIN = 2;
+const int R1PIN = 5;
+const int R2PIN = 4;
+const int R3PIN = 0;
+const int R4PIN = 2;
 bool R1Status;
+bool R2Status;
+bool R3Status;
+bool R4Status;
 char myIPString[24];
 char mylocalIPString[24];
 char mysubnetMaskString[24];
@@ -65,6 +71,12 @@ String homeurl = "index.php";
 // Commands sent through Web Socket
 const char R1ON[] = "r1on\n";
 const char R1OFF[] = "r1off\n";
+const char R2ON[] = "r2on\n";
+const char R2OFF[] = "r2off\n";
+const char R3ON[] = "r3on\n";
+const char R3OFF[] = "r3off\n";
+const char R4ON[] = "r4on\n";
+const char R4OFF[] = "r4off\n";
 
 ESP8266WebServer server(80);
 WebSocketsServer webSocket = WebSocketsServer(81);
@@ -152,16 +164,49 @@ void RGB(int colorNum){
  needUpdate = true;
 }
 
-void writeR1(bool Rstate) {  //void writeRelay(bool Rstate,int RelayNumber) for multiple relays
-  R1Status = Rstate;
-  // Note inverted logic depending on relay type
-  if (Rstate) {
-    digitalWrite(R1PIN, LOW);
-  }
-  else {
-    digitalWrite(R1PIN, HIGH);
-  }
-  needUpdate = true;
+void writeRelay(int RelayNum, bool Rstate) {    // Note inverted logic depending on relay type
+    switch (RelayNum) {
+            case 1:
+            R1Status = Rstate;
+              if (Rstate) {
+                digitalWrite(R1PIN, LOW);
+              }
+              else {
+                digitalWrite(R1PIN, HIGH);
+              }
+            break;
+            
+            case 2:
+            R2Status = Rstate;
+              if (Rstate) {
+                digitalWrite(R2PIN, LOW);
+              }
+              else {
+                digitalWrite(R2PIN, HIGH);
+              }
+            break;
+            
+            case 3:
+            R3Status = Rstate;
+              if (Rstate) {
+                digitalWrite(R3PIN, LOW);
+              }
+              else {
+                digitalWrite(R3PIN, HIGH);
+              }
+            break;
+            
+            case 4:
+            R4Status = Rstate;
+              if (Rstate) {
+                digitalWrite(R4PIN, LOW);
+              }
+              else {
+                digitalWrite(R4PIN, HIGH);
+              }
+            break;
+    }
+needUpdate = true;
 }
 
 void currentRead() {
@@ -384,8 +429,11 @@ String currentjson() {
 
 String iotDBjson() {
   String json = "{\"iotname\":\"" + APssid + "\",";
-  json += "\"espid\":\"" + String(MAC_char) + "\",";
-  json += "\"relay\":\"" + String(R1Status) + "\",";
+  json += "\"iotid\":\"" + String(MAC_char) + "\",";
+  json += "\"r1\":\"" + String(R1Status) + "\",";
+  json += "\"r2\":\"" + String(R2Status) + "\",";
+  json += "\"r3\":\"" + String(R3Status) + "\",";
+  json += "\"r4\":\"" + String(R4Status) + "\",";      
   json += "\"localip\":\"" + String(mylocalIPString) + "\",";
   json += "\"current\":\"" + String(currentValue) + "\",";
   json += "\"temperature\":\"" + tempDht + "\",";
@@ -393,16 +441,36 @@ String iotDBjson() {
   return json;
 }
 
-String iotDBget() {
+String iotDBoldget() { // the old way of sending GET request
   String DBget = "?iotname=" + APssid;
-  DBget += "&espid=" + String(MAC_char);
-  DBget += "&relay=" + String(R1Status);
+  DBget += "&iotid=" + String(MAC_char);
+  DBget += "&r1=" + String(R1Status);
+  DBget += "&r2=" + String(R2Status);
+  DBget += "&r3=" + String(R3Status);
+  DBget += "&r4=" + String(R4Status);      
   DBget += "&localip=" + String(mylocalIPString);
   DBget += "&current=" + String(currentValue);
   DBget += "&temperature=" + tempDht;
   DBget += "&humidity=" + humDht;
   return DBget;
 }
+
+String iotDBget() { // the new way of sending GET request has this shape : HomeIP/iotname/iotid/r1/r2/r3/r4/localip/current/temperature/humidity
+  String DBget = "/" + APssid;
+  DBget += "/" + String(MAC_char);
+  DBget += "/" + String(R1Status);
+  DBget += "/" + String(R2Status);
+  DBget += "/" + String(R3Status);
+  DBget += "/" + String(R4Status);      
+  DBget += "/" + String(mylocalIPString);
+  DBget += "/" + String(currentValue);
+  DBget += "/" + tempDht;
+  DBget += "/" + humDht;
+  return DBget;
+}
+
+
+
 // ------------- Networks connection
 void sort(int a[], int size, int r[]) {
   for (int i = 0; i < (size - 1); i++) {
@@ -507,21 +575,61 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         else {
           webSocket.sendTXT(num, R1OFF, strlen(R1OFF));
         }
+        if (R2Status) {
+          webSocket.sendTXT(num, R2ON, strlen(R2ON));
+        }
+        else {
+          webSocket.sendTXT(num, R2OFF, strlen(R2OFF));
+        }
+        if (R3Status) {
+          webSocket.sendTXT(num, R3ON, strlen(R3ON));
+        }
+        else {
+          webSocket.sendTXT(num, R3OFF, strlen(R3OFF));
+        }
+        if (R4Status) {
+          webSocket.sendTXT(num, R4ON, strlen(R4ON));
+        }
+        else {
+          webSocket.sendTXT(num, R4OFF, strlen(R4OFF));
+        }
       }
       break;
     case WStype_TEXT:
       Serial.printf("[%u] get Text: %s\r\n", num, payload);
 
       if ((length == strlen(R1ON)) && (memcmp(R1ON, payload, strlen(R1ON)) == 0)) {
-        writeR1(true);
+        writeRelay(1,true);
       }
       else if ((length == strlen(R1OFF)) && (memcmp(R1OFF, payload, strlen(R1OFF)) == 0)) {
-        writeR1(false);
+        writeRelay(1,false);
       }
-      // add else if readcurrent
-      else {
-        Serial.println("Unknown command");
+
+      if ((length == strlen(R2ON)) && (memcmp(R2ON, payload, strlen(R2ON)) == 0)) {
+        writeRelay(2,true);
       }
+      else if ((length == strlen(R2OFF)) && (memcmp(R2OFF, payload, strlen(R2OFF)) == 0)) {
+        writeRelay(2,false);
+      }
+      
+      if ((length == strlen(R3ON)) && (memcmp(R3ON, payload, strlen(R3ON)) == 0)) {
+        writeRelay(3,true);
+      }
+      else if ((length == strlen(R3OFF)) && (memcmp(R3OFF, payload, strlen(R3OFF)) == 0)) {
+        writeRelay(3,false);
+      }
+      
+      if ((length == strlen(R4ON)) && (memcmp(R4ON, payload, strlen(R4ON)) == 0)) {
+        writeRelay(4,true);
+      }
+      else if ((length == strlen(R4OFF)) && (memcmp(R4OFF, payload, strlen(R4OFF)) == 0)) {
+        writeRelay(4,false);
+      }
+      
+      // add else if readcurrent for real time printing
+      //else {
+      //  Serial.println("Unknown command");
+      //}
 
 
       // send data to all connected clients
@@ -554,7 +662,15 @@ void setup(void) {
       pinMode(ledBlue, OUTPUT);
       pinMode(ledGreen, OUTPUT);
       pinMode(R1PIN, OUTPUT);
+      pinMode(R2PIN, OUTPUT);
+      pinMode(R3PIN, OUTPUT);
+      pinMode(R4PIN, OUTPUT);
+
+      // Inverted logic depending on the type of the relays
       digitalWrite(R1PIN, HIGH);
+      digitalWrite(R2PIN, HIGH);
+      digitalWrite(R3PIN, HIGH);
+      digitalWrite(R4PIN, HIGH);
       
       pinMode(A0, INPUT);
       Serial.begin(115200);
@@ -676,12 +792,36 @@ void setup(void) {
       if (server.args() != 0) {
         if (server.hasArg("r1")) {
           if (server.arg("r1") == "on") {
-            writeR1(HIGH);
+            writeRelay(1,HIGH);
           }
           if (server.arg("r1") == "off") {
-            writeR1(LOW);
+            writeRelay(1,LOW);
           }
         }
+        if (server.hasArg("r2")) {
+          if (server.arg("r2") == "on") {
+            writeRelay(2,HIGH);
+          }
+          if (server.arg("r2") == "off") {
+            writeRelay(2,LOW);
+          }
+        }
+        if (server.hasArg("r3")) {
+          if (server.arg("r3") == "on") {
+            writeRelay(3,HIGH);
+          }
+          if (server.arg("r3") == "off") {
+            writeRelay(3,LOW);
+          }
+        }
+        if (server.hasArg("r4")) {
+          if (server.arg("r4") == "on") {
+            writeRelay(4,HIGH);
+          }
+          if (server.arg("r4") == "off") {
+            writeRelay(4,LOW);
+          }
+        }        
       }
       server.send(200, "text/json", iotDBjson()); //do we need to update dht and current before sending iotDBjson ?
     });
