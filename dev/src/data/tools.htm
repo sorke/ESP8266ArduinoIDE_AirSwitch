@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+
+<style>
+
+body{
+    text-align: center;
+    background: #123;
+    font-family: Verdana, Geneva, sans-serif;
+    color: #888;
+}
+
+h1{
+    color: #888;
+
+}
+h2 {
+    size: 120%;
+    color: #668;
+   
+}
+.btn {
+
+  -webkit-border-radius: 28;
+  -moz-border-radius: 28;
+  border-radius: 28px;
+  font-family: Arial;
+  color: #ffffff;
+  font-size: 20px;
+  background: #3498db;
+  padding: 10px 20px 10px 20px;
+  text-decoration: none;
+}
+</style>
+<head>
+  <meta charset="utf-8">
+  <title>Wifi switch / Tools</title>
+</head>
+<body onload='refreshstate()'>
+<h1>Tools</h1>
+
+<br><br><br>
+<table align='center'>
+  <tr><td><p><a class="btn" id='bt1' onclick="btchart();">Live chart</a></p></td></tr>
+  </table>
+  <br><br><br><br><br><br><br><br>
+
+<p><a class="btn" id='bt1' onclick="btback();">Back</a></p>
+<br>
+<div id='warning'></div>
+</body>
+
+<script>
+
+var j=0
+var nua = navigator.userAgent;
+
+
+    function btback(){
+    window.location.href = '/index.htm';
+    }
+    function btchart(){
+    window.location.href = '/livechart.htm';
+    }
+
+</script>
+
+</html>

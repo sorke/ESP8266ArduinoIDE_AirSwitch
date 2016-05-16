@@ -1,0 +1,207 @@
+<!DOCTYPE html> 
+<meta name="robots" content="noindex">
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Wifi switch / Live chart</title>
+  
+<style type="text/css">
+
+.chart-legend li span{
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 5px;
+}
+
+body{
+    
+    background: #123;
+    font-family: Verdana, Geneva, sans-serif;
+    color: #888;
+}
+h1{
+    text-align:center;
+    color: #888;
+
+}
+
+DIV#log {
+  margin: 10px auto;
+  width: 600px;
+  height: 200px;
+  background: gainsboro;
+  padding: 5px;
+  overflow-y: scroll;
+}
+.btn {
+
+  -webkit-border-radius: 28;
+  -moz-border-radius: 28;
+  border-radius: 28px;
+  font-family: Arial;
+  color: #ffffff;
+  font-size: 20px;
+  background: #3498db;
+  padding: 10px 20px 10px 20px;
+  text-decoration: none;
+}
+
+.tgl{display:none}.tgl,.tgl:after,.tgl:before,.tgl *,.tgl *:after,.tgl *:before,.tgl + .tgl-btn{box-sizing:border-box}.tgl::-moz-selection,.tgl:after::-moz-selection,.tgl:before::-moz-selection,.tgl *::-moz-selection,.tgl *:after::-moz-selection,.tgl *:before::-moz-selection,.tgl + .tgl-btn::-moz-selection{background:none}.tgl::selection,.tgl:after::selection,.tgl:before::selection,.tgl *::selection,.tgl *:after::selection,.tgl *:before::selection,.tgl + .tgl-btn::selection{background:none}.tgl + .tgl-btn{outline:0;display:block;width:4em;height:2em;position:relative;cursor:pointer;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.tgl + .tgl-btn:after,.tgl + .tgl-btn:before{position:relative;display:block;content:"";width:50%;height:100%}.tgl + .tgl-btn:after{left:0}.tgl + .tgl-btn:before{display:none}.tgl:checked + .tgl-btn:after{left:50%}.tgl-light + .tgl-btn{background:#f0f0f0;border-radius:2em;padding:2px;-webkit-transition:all .4s ease;transition:all .4s ease}.tgl-light + .tgl-btn:after{border-radius:50%;background:#fff;-webkit-transition:all .2s ease;transition:all .2s ease}.tgl-light:checked + .tgl-btn{background:#9FD6AE}
+</style>
+
+    <script src="Chart.min.js"></script>
+</head>
+<h1>Live chart</h1>
+
+<br>
+<body onload="updateChart()">
+
+  <canvas id="updating-chart" width="1000" height="300"></canvas>
+  <div id="legendDiv" class="chart-legend"></div>    
+
+  <div id="log"></div>
+  <div style="text-align:center"><p><a class="btn" id='bt2' onclick="exportToCsv();">Save as CSV file</a></p></div>
+ 
+<script > 
+// enlevé id="jsbin-javascript"
+var boucle=0;
+
+var canvas = document.getElementById('updating-chart'),
+    ctx = canvas.getContext('2d'),
+    startingData = {
+      labels: ["hello"],
+      datasets: [
+          {   
+              label : "Current",
+              fillColor: "rgba(220,220,220,0.2)",
+              strokeColor: "rgba(220,220,220,1)",
+              pointColor: "rgba(220,220,220,1)",
+              pointStrokeColor: "#fff",
+              data: [0]
+
+          },
+          {
+              label : "Temperature",
+              fillColor: "rgba(151,187,205,0.2)",
+              strokeColor: "rgba(151,187,205,1)",
+              pointColor: "rgba(151,187,205,1)",
+              pointStrokeColor: "#fff",
+              data: [0]
+
+          },
+                    {
+              label : "Humidity",
+              fillColor: "rgba(130,205,137,0.2)",
+              strokeColor: "rgba(130,205,137,1)",
+              pointColor: "rgba(130,205,137,1)",
+              pointStrokeColor: "#fff",
+              data: [0]
+
+          },
+                    {
+              label : "Relay 1",
+              fillColor: "rgba(227,150,236,0.2)",
+              strokeColor: "rgba(227,150,236,1)",
+              pointColor: "rgba(227,150,236,1)",
+              pointStrokeColor: "#fff",
+              data: [0]
+
+          },
+                    {
+              label : "Relay 2",
+              fillColor: "rgba(230,226,102,0.2)",
+              strokeColor: "rgba(230,226,102,1)",
+              pointColor: "rgba(230,226,102,1)",
+              pointStrokeColor: "#fff",
+              data: [0]
+
+          },
+                    {
+              label : "Relay 3",
+              fillColor: "rgba(54,28,228,0.2)",
+              strokeColor: "rgba(54,28,228,1)",
+              pointColor: "rgba(54,28,228,1)",
+              pointStrokeColor: "#fff",
+              data: [0]
+
+          },
+                    {
+              label : "Relay 4",
+              fillColor: "rgba(228,28,28,0.2)",
+              strokeColor: "rgba(228,28,28,1)",
+              pointColor: "rgba(228,28,28,1)",
+              pointStrokeColor: "#fff",
+              data: [0]
+
+          }
+      ]
+    }
+    //latestLabel = startingData.labels[6];
+
+//gjson sdata puis
+// il faudrait ajouter le premier point du graph en modifiant directement le dataset[0] de chaque variable : myLiveChart.datasets[3].points[0].value;startingData.labels[0]="time";var myLiveChart=new Chart(ctx).Line(startingData,{animationSteps:15})
+
+var myLiveChart=new Chart(ctx).Line(startingData,{bezierCurve: false,animationSteps:15})
+document.getElementById("legendDiv").innerHTML=myLiveChart.generateLegend()
+
+
+
+function updateChart(){
+  firstupdategraph();
+  setInterval(updategraph, 5000); 
+}
+
+//utiliser myLiveChart.datasets.splice(array index,1) pour la config des autres entrees (ou pas)
+
+
+ //clearInterval(myVar);
+function updatetemp(){ //old
+  if (document.getElementById("cbtemp").checked=="false"){ // on continue de sélectinner ce que l'on affiche
+    myLiveChart.datasets[5].points.splice(0,30)
+    myLiveChart.render()
+    printtemp=0
+  }
+  else
+    {printtemp=1
+      //ajouter au dataset temp le datasetlenght de "0" : [0,0,0,0,0,0,0,0,0,0,0]
+    }
+}
+function updatebat(){ //old
+  if (document.getElementById("cbbat").checked=="false"){
+    myLiveChart.datasets[6].points.splice(0,30)
+    myLiveChart.render()
+    printbat=0
+  }
+  else
+    {printbat=1}
+}
+
+function exportToCsv(){var e="";e+=document.getElementById("log").innerHTML;e=e.replace(/<br>/g,"\r\n");var t=new Blob([e],{type:"text/csv;charset=utf-8;"});if(navigator.msSaveBlob)navigator.msSaveBlob(t,"sensors.csv");else{var o=document.createElement("a");if(void 0!==o.download){var a=URL.createObjectURL(t);o.setAttribute("href",a),o.setAttribute("download","sensors.csv"),o.style.visibility="hidden",document.body.appendChild(o),o.click(),document.body.removeChild(o)}}}
+
+function getjson(e){var s="",n=new XMLHttpRequest;return n.open("GET",e,!1),n.send(null),200===n.status&&(console.log(JSON.parse(n.responseText)),s=JSON.parse(n.responseText)),""!=s?s:void 0} //on créé un netsocket a la place ?
+
+function firstupdategraph(){
+  var a=getjson("update") // retirer cette dynamie
+  var d=new Date().toLocaleTimeString()
+  startingData.labels[0]=d
+  myLiveChart.datasets[0].points[0].value=parseFloat(a.current);
+  myLiveChart.datasets[1].points[0].value=parseInt(a.temperature) || 0 ;
+  myLiveChart.datasets[2].points[0].value=parseInt(a.humidity) || 0;
+  myLiveChart.datasets[3].points[0].value=parseInt(a.r1)*50;
+  myLiveChart.datasets[4].points[0].value=parseInt(a.r2)*50;
+  myLiveChart.datasets[5].points[0].value=parseInt(a.r3)*50;
+  myLiveChart.datasets[6].points[0].value=parseInt(a.r4)*50;
+
+  document.getElementById("log").innerHTML+=d+","+parseFloat(a.current)+","+a.temperature+","+a.humidity+","+parseInt(a.r1)+","+parseInt(a.r2)+","+parseInt(a.r3)+","+parseInt(a.r4)+"<br/>";
+  //if (updatebat==1){myLiveChart.datasets[5].points[0].value=a.temp.value;}
+  
+}
+
+function updategraph(){var a=getjson("update");var d=new Date().toLocaleTimeString();
+++boucle,myLiveChart.addData([parseFloat(a.current),parseInt(a.temperature) || 0,parseInt(a.humidity) || 0,parseInt(a.r1)*50,parseInt(a.r2)*50,parseInt(a.r3)*50,parseInt(a.r4)*50],d)
+document.getElementById("log").innerHTML+=d+","+parseFloat(a.current)+","+a.temperature+","+a.humidity+","+parseInt(a.r1)+","+parseInt(a.r2)+","+parseInt(a.r3)+","+parseInt(a.r4)+"<br/>",boucle>30&&myLiveChart.removeData()}
+
+</script>
+</body>
+</html>

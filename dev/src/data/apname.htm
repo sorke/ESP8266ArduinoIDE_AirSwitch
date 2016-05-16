@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+
+<style>
+
+body{
+    text-align: center;
+    background: #123;
+    font-family: Verdana, Geneva, sans-serif;
+    color: #888;
+}
+
+h1{
+    color: #888;
+
+}
+h2 {
+    size: 120%;
+    color: #668;
+   
+}
+.btn {
+
+  -webkit-border-radius: 28;
+  -moz-border-radius: 28;
+  border-radius: 28px;
+  font-family: Arial;
+  color: #ffffff;
+  font-size: 20px;
+  background: #3498db;
+  padding: 10px 20px 10px 20px;
+  text-decoration: none;
+}
+</style>
+<head>
+  <meta charset="utf-8">
+  <title>Wifi switch / Change module name</title>
+</head>
+<body onload='refreshstate()'>
+<h1>Change module name</h1>
+
+<br><br><br>
+<table align='center'>
+  <tr><td><div>New module name :&emsp;&emsp;</td><td><input type='text' id='APssid' value='' maxlength='20'/></div></td></tr>
+  </table>
+  <br><br>
+
+<p><a class="btn" id='bt1' onclick="btback();">Back</a> &emsp;<a class="btn" id='bt3' onclick='sendget("iotname");'>Change module name</a></p>
+<br>
+<div id='warning'></div>
+</body>
+
+<script>
+
+var j=0
+var nua = navigator.userAgent;
+
+
+    function btback(){
+    window.location.href = '/config.htm';
+    }
+
+function sendget(theUrl) // a modifier
+{
+    
+    document.getElementById("warning").innerHTML = "Changing name : reconnect to the module using the new module name";
+    
+
+    var temp="";
+    var ssid = document.getElementById("Apssid").value;
+    theUrl += '?name='+ssid;
+
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.open('GET',theUrl, false);  // `false` makes the request synchronous
+        xmlHttp.send(null);
+
+        if (xmlHttp.status === 200) {
+                console.log(JSON.parse(xmlHttp.responseText));
+                    temp= JSON.parse(xmlHttp.responseText);
+        }
+}
+
+</script>
+
+</html>

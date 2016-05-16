@@ -1,0 +1,164 @@
+<!doctype html>
+<html>
+<style>
+
+//only for android devices
+.browser-android select {    
+  -webkit-appearance: listbox;
+  background-repeat: no-repeat;
+  background-position: right center;
+  padding-right: 20px;
+}
+
+body{
+    text-align: center;
+    background: #123;
+    font-family: Verdana, Geneva, sans-serif;
+    color: #888;
+}
+
+h1{
+    color: #888;
+
+}
+h2 {
+    size: 120%;
+    color: #668;
+   
+}
+.btn {
+
+  -webkit-border-radius: 28;
+  -moz-border-radius: 28;
+  border-radius: 28px;
+  font-family: Arial;
+  color: #ffffff;
+  font-size: 20px;
+  background: #3498db;
+  padding: 10px 20px 10px 20px;
+  text-decoration: none;
+}
+</style>
+<head>
+  <meta charset="utf-8">
+  <title>Wifi switch / Network connection</title>
+</head>
+<body onload='refreshstate()'>
+<h1>Access point connection</h1>
+
+<h2> Select your network </h2>
+
+<form method="post" > 
+<select name='SSID' id="SSID" size="7" style="width: 300px" class="form-control">
+</select><br><br>
+</form>
+
+<div>Password :&emsp;&emsp;<input type='text' id='Pwd' value='' maxlength='100'/></div><br>
+<p><a class="btn" id='bt1' onclick="btback();">Back</a> &emsp;<a class="btn" id='bt2' onclick="refreshwifi()">Refresh</a>&emsp;<a class="btn" id='bt3' onclick='sendget("apconnect");'>Connect to network</a></p>
+<br>
+<div align="center" id="divstat" ><table>
+    <tr><td>Status : </td><td id="stat"></td></tr>
+    <tr><td>Connected as : </td><td id="netip"></td></tr>
+    <tr><td>Connected by : </td><td id="broadip"></td></tr>
+
+</table></div> 
+</body>
+
+<script>
+
+var j=0
+var nua = navigator.userAgent;
+
+//only for android devices
+var is_android = ((nua.indexOf('Mozilla/5.0') > -1 && nua.indexOf('Android ') > -1 && nua.indexOf('AppleWebKit') > -1) && !(nua.indexOf('Chrome') > -1));
+if(is_android) { // A améliorer
+        $('select.form-control').removeClass('form-control').css('width', '100%');
+
+}
+
+refreshwifi();
+
+    function btback(){
+    window.location.href = '/config.htm';
+    }
+
+
+    function getjson(theUrl) // the synchronous mode is deprecated in firefox
+{
+    var temp=""
+    var xmlHttp = new XMLHttpRequest();
+    xmlHttp.open('GET', theUrl, false);  // `false` makes the request synchronous
+    xmlHttp.send(null);
+
+    if (xmlHttp.status === 200) {
+            console.log(JSON.parse(xmlHttp.responseText));
+                temp= JSON.parse(xmlHttp.responseText);
+    }
+
+
+    if (temp != ""){
+        return temp;}
+}
+
+function sendget(theUrl)
+{
+    
+    document.getElementById("stat").innerHTML = "Connecting";
+    document.getElementById("netip").innerHTML ="";
+    document.getElementById("broadip").innerHTML = "";
+
+    var temp="";
+    var ssid = document.getElementById("SSID").selectedOptions[0].value;
+    var pwd = document.getElementById("Pwd").value;
+    theUrl += '?ssid='+ssid+'&pwd='+pwd;
+
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.open('GET',theUrl, false);  // `false` makes the request synchronous
+        xmlHttp.send(null);
+
+        if (xmlHttp.status === 200) {
+                console.log(JSON.parse(xmlHttp.responseText));
+                    temp= JSON.parse(xmlHttp.responseText);
+        }
+}
+
+    function refreshwifi() // the synchronous mode is deprecated in firefox
+{ 
+
+var op= document.getElementById("SSID")
+op.innerHTML = "<option value=refresh>Refreshing...</option>";
+var nets=getjson("aplist")
+var sigt=["Strong","Strong","Strong","Strong","Strong","Good","Weak","Bad","Bad","Bad","Bad","Bad"]
+
+    if (nets[0].SSID!= 0) {
+          for (i = 0; i < nets.length ; i++) {
+            nets[i].RSSI=parseInt(nets[i].RSSI.substring(1,5))
+        }
+        op.innerHTML=""
+        nets.sort(function(a,b) {return a.RSSI - b.RSSI;});
+                for (i = 0; i < nets.length ; i++) {
+                    if (i==0){
+                    op.innerHTML += "<option selected value="+ nets[i].SSID +">"+ nets[i].SSID +"&emsp;&emsp;&emsp;&emsp;Signal: "+sigt[parseInt(nets[i].RSSI/10)]+"</option>";
+                    }
+                    else{
+                    op.innerHTML += "<option value="+ nets[i].SSID +">"+ nets[i].SSID +"&emsp;&emsp;&emsp;&emsp;Signal: "+sigt[parseInt(nets[i].RSSI/10)]+"</option>";
+                    }
+        }
+    }
+    else {op.innerHTML=' <option  selected disabled value="">No network detected</option>'}
+}
+
+function refreshstate() {
+
+    wstate=getjson("wifiparam")
+    document.getElementById("stat").innerHTML = wstate.state + " to " + wstate.STssid ;
+    document.getElementById("netip").innerHTML =wstate.localip;
+    document.getElementById("broadip").innerHTML = wstate.gatewayip;
+}
+//getElementById.("SSID").options[0]=nets.Network[0]
+//var bb=setInterval(cali(caca),500)
+//function cali(tata) { if (tata !== undefined){cearInterval(bb);print.log(tata);}}
+
+</script>
+
+</html>

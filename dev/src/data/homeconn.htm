@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+
+<style>
+
+body{
+    text-align: center;
+    background: #123;
+    font-family: Verdana, Geneva, sans-serif;
+    color: #888;
+}
+
+h1{
+    color: #888;
+
+}
+h2 {
+    size: 120%;
+    color: #668;
+   
+}
+.btn {
+
+  -webkit-border-radius: 28;
+  -moz-border-radius: 28;
+  border-radius: 28px;
+  font-family: Arial;
+  color: #ffffff;
+  font-size: 20px;
+  background: #3498db;
+  padding: 10px 20px 10px 20px;
+  text-decoration: none;
+}
+</style>
+<head>
+  <meta charset="utf-8">
+  <title>Wifi switch / Home connection</title>
+</head>
+<body onload='refreshstate()'>
+<h1>Home connection</h1>
+
+<br><br><br>
+<table align='center'>
+  <tr><td><div>Home IP :&emsp;&emsp;</td><td><input type='text' id='Pwd' value='' maxlength='100'/></div></td></tr>
+  <tr><td><div>Home name :&emsp;&emsp;</td><td><input type='text' id='Pwd' value='' maxlength='100'/></div></td></tr>
+  </table>
+  <br><br>
+
+<p><a class="btn" id='bt1' onclick="btback();">Back</a> &emsp;<a class="btn" id='bt3' onclick='sendget("apconnect");'>Connect to Home</a></p>
+<br>
+
+</body>
+
+<script>
+
+var j=0
+var nua = navigator.userAgent;
+
+//only for android devices
+var is_android = ((nua.indexOf('Mozilla/5.0') > -1 && nua.indexOf('Android ') > -1 && nua.indexOf('AppleWebKit') > -1) && !(nua.indexOf('Chrome') > -1));
+if(is_android) { // A améliorer
+        $('select.form-control').removeClass('form-control').css('width', '100%');
+
+}
+
+refreshwifi();
+
+    function btback(){
+    window.location.href = '/config.htm';
+    }
+
+function sendget(theUrl) // a modifier
+{
+    
+    document.getElementById("stat").innerHTML = "Connecting";
+    document.getElementById("netip").innerHTML ="";
+    document.getElementById("broadip").innerHTML = "";
+
+    var temp="";
+    var ssid = document.getElementById("SSID").selectedOptions[0].value;
+    var pwd = document.getElementById("Pwd").value;
+    theUrl += '?ssid='+ssid+'&pwd='+pwd;
+
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.open('GET',theUrl, false);  // `false` makes the request synchronous
+        xmlHttp.send(null);
+
+        if (xmlHttp.status === 200) {
+                console.log(JSON.parse(xmlHttp.responseText));
+                    temp= JSON.parse(xmlHttp.responseText);
+        }
+}
+
+</script>
+
+</html>

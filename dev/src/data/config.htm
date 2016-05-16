@@ -1,0 +1,140 @@
+<!doctype html>
+<html>
+
+<style>
+
+body{
+    text-align: center;
+    background: #123;
+    font-family: Verdana, Geneva, sans-serif;
+    color: #888;
+}
+
+h1{
+    color: #888;
+
+}
+h2 {
+    size: 120%;
+    color: #1f3f60;
+   
+}
+
+.btn {
+
+  -webkit-border-radius: 28;
+  -moz-border-radius: 28;
+  border-radius: 28px;
+  font-family: Arial;
+  color: #ffffff;
+  font-size: 20px;
+  background: #3498db;
+  padding: 10px 20px 10px 20px;
+  text-decoration: none;
+}
+.smallbtn {
+
+  -webkit-border-radius: 18;
+  -moz-border-radius: 18;
+  border-radius: 18px;
+  font-family: Arial;
+  font-weight: bold;
+  color: #ffff;
+  font-size: 12px;
+  background: #855;
+  padding: 4px 10px 4px 10px;
+  text-decoration: none;
+}
+
+.btn:hover {
+  background: #3cb0fd;
+  text-decoration: none;
+}
+</style>
+
+<head>
+<meta charset="utf-8">
+    <title>Wifi Switch / Configuration</title>
+</head>
+<body>
+</br>
+<h1>Configuration</h1></br></br>
+<div >
+<table align=center>
+<tr><td align=left><b>Module name : </b></td><td id="APssid"></td><td>&nbsp;</td><td><p><a class="smallbtn" id='btc1' onclick="btchangeAPssid();">Change</a></p></td></tr>
+<tr><td align=left><b>Module IP : </b></td><td id="APip"></td></tr>
+<tr><td align=left><b>Module mac : </b></td><td id="mac"></td></tr>
+<tr><td align=left></td><td><br></td></tr>
+
+<tr><td align=left><b>Access point name : </b></td><td id="STssid"></td><td>&nbsp;</td><td><p><a class="smallbtn" id='bt2' onclick="btapconnect();">Change</a></p></td></tr>
+<tr><td align=left><b>Network state : </b></td><td id="state"></td></tr>
+<tr><td align=left><b>Network local IP : </b></td><td id="localip"></td></tr>
+<tr><td align=left><b>Network mask IP : </b></td><td id="netip"></td></tr>
+<tr><td align=left><b>Network gateway IP : </b></td><td id="gatewayip"></td></tr>
+<tr><td align=left></td><td><br></td></tr>
+
+<tr><td align=left><b>Home IP : </b></td><td id="homeip"></td><td>&nbsp;</td><td><p><a class="smallbtn" id='bt3' onclick="btchangehomeIP();">Change</a></p></td></tr>
+<tr><td align=left><b>Home port : </b></td><td id="homeport"></td></tr>
+<tr><td align=left><b>Home state : </b></td><td id="homestate"></td></tr>
+
+</table>
+</div>
+</br></br></br></br>
+<p><a class="btn" id='bt1' onclick="btback();">Back</a>
+
+</body>
+
+<script>
+    function btback(){
+    window.location.href = '/index.htm';
+    }
+    function btapconnect(){
+    window.location.href = '/netconn.htm';
+    }
+    function btchangehomeIP(){
+    window.location.href = '/homeconn.htm';
+    }
+    function btchangeAPssid(){
+    window.location.href = '/apname.htm';
+    }
+    
+
+    function getjson(theUrl) // the synchronous mode is deprecated in firefox
+{
+    var temp=""
+    var xmlHttp = new XMLHttpRequest();
+    xmlHttp.open('GET', theUrl, false);  // `false` makes the request synchronous
+    xmlHttp.send(null);
+
+    if (xmlHttp.status === 200) {
+            console.log(JSON.parse(xmlHttp.responseText));
+                temp= JSON.parse(xmlHttp.responseText);
+    }
+
+
+    if (temp != ""){
+        return temp;}
+}
+
+wifiparam=getjson("wifiparam")
+document.getElementById("APip").innerHTML =wifiparam.APip;
+document.getElementById("APssid").innerHTML =wifiparam.APssid;
+document.getElementById("STssid").innerHTML =wifiparam.STssid;
+document.getElementById("state").innerHTML = wifiparam.state;
+document.getElementById("localip").innerHTML =wifiparam.localip;
+document.getElementById("netip").innerHTML =wifiparam.netmaskip;
+document.getElementById("gatewayip").innerHTML = wifiparam.gatewayip;
+document.getElementById("mac").innerHTML = wifiparam.mac;
+document.getElementById("homeip").innerHTML = wifiparam.homeip;
+document.getElementById("homeport").innerHTML = wifiparam.homeport;
+document.getElementById("homestate").innerHTML = wifiparam.homestate;
+
+</script>
+
+
+
+    
+
+
+
+</html>
