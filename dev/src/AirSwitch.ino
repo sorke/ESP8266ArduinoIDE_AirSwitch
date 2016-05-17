@@ -11,12 +11,17 @@
   #include <FS.h>
   #include <dht11.h> // the DHT11 needs power to read temperature and humidity, the arduino 3.3v is not sufficent
   #include "user_interface.h" //for timer purpose
+  #include <Average.h>
+  #include "aes256.h" //Crypto library
 
 // ----------------- DHT definition
   dht11 DHT;
   #define DHT11_PIN 10
 
 // ----------------- Variables definition
+  Average<float> ave(135); // // Reserve space for 135 entries in the average bucket.
+  aes256_context ctxt; // Crypto init
+
   String wifistatestring[7] = {"Inactive", "No SSID available", "Scan completed", "Connected", "Connection failed", "Connection lost", "Connecting"};
   const char* initSTssid = "NUMERICABLE-3DA4";
   const char* initSTpwd = "BJX57NGKBW"; // Reading file error on STssid
@@ -36,7 +41,7 @@
   boolean homeClientConnected = false;
   boolean waitingClient=false;
   boolean needUpdate = false;
-  int maxAmpOld;
+  float oldAmp;
   os_timer_t myTimer1;
   os_timer_t myTimer2;
   os_timer_t myTimer3;
@@ -49,7 +54,7 @@
   String oldhumDht;
   String tempDht;
   String humDht;
-  int currentValue; // why not float?
+  float currentValue;
   int val[200] ; // Current raw data
 
   const int ledRed = 4;      // the number of the LED pins
@@ -226,24 +231,34 @@
   void currentRead() {
 
     int temp = 0;
-    int maxAmp = 0;
-
-    for (int i = 1; i < 300; i++) {
-      temp = analogRead(A0);
-      if (temp > maxAmp) {
-        maxAmp = temp;
-      }
-      delayMicroseconds(100);
+    float newAmp = 0;
+    long aveR;
+    int val[135] ;
+    ave.clear();
+       
+    // Add a new random value to the bucket
+    
+    for (int i = 0; i < 135; i++) {
+    ave.push(analogRead(A0));
     }
+    aveR=ave.mean();
+
+    long powerSum=0;
+          for (int i = 5 ; i < 135; i++) {
+            powerSum+=abs(ave.get(i)-aveR);          
+          }
+
+    newAmp =0.00033553*powerSum+0.05324;
 
     // look if the value needs to be updated to the "home" server
-    if (maxAmp != maxAmpOld){
-        //needUpdate = true;
-        maxAmpOld=maxAmp;
+    if (int(newAmp*10) != int(oldAmp*10)){
+        needUpdate = true;
+        Serial.println("current changed");
+        oldAmp=newAmp;
     }
     //return the interpolation of the analogValue with the real current flowing (3 equations/3 areas)
     // value should be in a global variable
-    currentValue=maxAmp;
+    currentValue=newAmp;
   }
 
   void dhtRead() {
@@ -479,6 +494,17 @@
     json += "\"temperature\":\"" + tempDht + "\",";
     json += "\"humidity\":\"" + humDht + "\"}";
     return json;
+  }
+
+  String cryptojson(){
+    String json; // = iotDBjson():
+      uint8_t key[] ="1234567890ABCDEFGHIJKLMNOPQRSTUV";
+      aes256_init(&ctxt, key);
+      uint8_t data[] = "bonjour ca va?!!"; // I want to put here the json string
+      aes256_encrypt_ecb(&ctxt, data); // must decrypt on receiving data too
+      aes256_done(&ctxt);
+      json = (char*)data;
+      return json;
   }
 
   String loadjson() {
@@ -937,6 +963,10 @@ void setup(void) {
   server.send(200, "text/json", loadjson());
   });
 
+  server.on("/crypto", HTTP_GET, []() {
+  server.send(200, "text/json", cryptojson());
+  });
+
 // ------------- Timer initialisation
   tickUpdate = false;
   os_timer_setfn(&myTimer1, timerUpdate, NULL);
@@ -982,7 +1012,7 @@ server.handleClient(); // comment fusionner avec listenClient() ?
    }
 
   if (tickCurrent == true) { 
-          currentRead();
+          //currentRead();
           //Serial.println("Tick Current Occurred : 0.5s");
           tickCurrent = false;
    }
