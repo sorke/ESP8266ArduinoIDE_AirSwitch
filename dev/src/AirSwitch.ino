@@ -1068,11 +1068,10 @@ server.handleClient(); // comment fusionner avec listenClient() ?
       tickUpdate = false;
       dhtRead();
       currentRead();
-                sendDataClient();
-      //if(!waitingClient){
-        //  sendDataClient();
-      //}
-      //clientTimeout++;
+      if(!waitingClient){
+        sendDataClient();
+      }
+      clientTimeout++;
   }
 
   if (tickDHT == true) { 
@@ -1169,7 +1168,7 @@ yield(); //understand and test if it is necessary?!
     }
   }
 
-  void relayDataClient(String rsms) { //Equivalent to "home connect"
+  void relayDataClient(String rsms) {
           if (!homeclient.connect(HomeIP.c_str(), homeport)) {
           Serial.println("connection failed to home ip as client");
           homeClientConnected =false;
@@ -1193,7 +1192,7 @@ yield(); //understand and test if it is necessary?!
     
   }
 
-  void postDataClient() { //Equivalent to "home connect"
+  void postDataClient() {
  
           if (!homeclient.connect(HomeIP.c_str(), homeport)) {
           Serial.println("POST failed to home ip as client");
