@@ -45,9 +45,11 @@
   os_timer_t myTimer1;
   os_timer_t myTimer2;
   os_timer_t myTimer3;
+  os_timer_t myTimer4;
   bool tickUpdate;
   bool tickDHT;
   bool tickCurrent;
+  bool tickPOST;
 
   unsigned long lastDhtRead=0;
   String oldtempDht;
@@ -249,9 +251,10 @@
           }
 
     newAmp =0.00033553*powerSum+0.05324;
+    newAmp = (int(newAmp*20))/20; // We round the current at 0.05
 
     // look if the value needs to be updated to the "home" server
-    if (int(newAmp*10) != int(oldAmp*10)){
+    if (newAmp != oldAmp){
         needUpdate = true;
         Serial.println("current changed");
         oldAmp=newAmp;
@@ -497,14 +500,49 @@
   }
 
   String cryptojson(){
-    String json; // = iotDBjson():
-      uint8_t key[] ="1234567890ABCDEFGHIJKLMNOPQRSTUV";
-      aes256_init(&ctxt, key);
-      uint8_t data[] = "bonjour ca va?!!"; // I want to put here the json string
-      aes256_encrypt_ecb(&ctxt, data); // must decrypt on receiving data too
-      aes256_done(&ctxt);
-      json = (char*)data;
-      return json;
+    String encodedjson; // = iotDBjson():
+    String message;
+    message=iotDBjson();
+    
+      uint8_t key[] ="olivieretflorianolivieretflorian";
+
+      for (int k=0;k<message.length();k=k+16){
+      String sms="" ;
+            aes256_init(&ctxt, key);
+            uint8_t data[16];
+            String stringOne = message.substring(k,k+16);
+
+
+            char charBuf[17];
+            stringOne.toCharArray(charBuf, 17) ;
+
+                for (int i=0;i<sizeof(data);i++){
+                data[i]=charBuf[i];
+                }
+
+           //complete message with zeros until having 16 characters
+                if (message.length()<k+16){
+                int diff=k+16-message.length();
+                    for (int j=16-diff;j<16;j++){
+                      data[j]=00;
+                    }
+                }
+
+            aes256_encrypt_ecb(&ctxt, data); // must decrypt on receiving data too
+            aes256_done(&ctxt);
+
+                for (int i=0;i<sizeof(data);i++){
+                  if(String(data[i],HEX).length()==1){
+                    sms+="0";
+                  }
+                  sms += String(data[i],HEX);
+                }
+                
+              encodedjson +=sms;
+
+      }
+      Serial.println(encodedjson);
+      return encodedjson;
   }
 
   String loadjson() {
@@ -737,6 +775,10 @@
         tickCurrent = true;
   }
 
+  void timerPOST(void *pArg) {
+        tickPOST = true;
+  }
+
 // --------------------------------------------- Setup -----------------------------------------------
 void setup(void) {
 // --------------- Pin Initialisation
@@ -832,6 +874,30 @@ void setup(void) {
   server.send(200, "text/json", dhtjson());
   });
 
+  server.on("/tonetwork", HTTP_GET, []() {
+    String rmessage ="?";
+    int stair;
+    int i=0;
+
+    if (server.hasArg("stair")) {
+      stair=server.arg("stair").toInt();
+      stair++;
+      }else { stair=1;i=1;}
+      
+    rmessage += "stair="+String(stair)+"&";
+
+    for (i;i<server.args();i++){
+      rmessage+= server.argName(i) +"="+ server.arg(i)+"&";
+    }
+
+    rmessage=rmessage.substring(0, rmessage.length() - 1);
+
+    relayDataClient(rmessage);
+
+
+  server.send(200, "text/json", "{\"data\":\"ok\"}");
+  }); 
+
 // -------- Server.on / Home server connection
   server.on("/handshake", HTTP_GET, []() {
   boolean change=false;
@@ -841,7 +907,7 @@ void setup(void) {
         APssid = server.arg("iotname");
         change = true;
       }
-    }
+    } 
     //      if (server.hasArg("pwd" == true and server.arg("pwd")!=APpwd)){APpwd=server.arg("pwd");
 
     if (server.hasArg("homeip")) {
@@ -980,6 +1046,10 @@ void setup(void) {
   os_timer_setfn(&myTimer3, timerCurrent, NULL);
   os_timer_arm(&myTimer3, 500, true);
 
+  tickPOST = false;
+  os_timer_setfn(&myTimer4, timerPOST, NULL);
+  os_timer_arm(&myTimer4, 5000, true);
+
 // -------------- First home connection
   currentRead();
   dhtRead();
@@ -998,11 +1068,11 @@ server.handleClient(); // comment fusionner avec listenClient() ?
       tickUpdate = false;
       dhtRead();
       currentRead();
-
-      if(!waitingClient){
-          sendDataClient();
-      }
-      clientTimeout++;
+                sendDataClient();
+      //if(!waitingClient){
+        //  sendDataClient();
+      //}
+      //clientTimeout++;
   }
 
   if (tickDHT == true) { 
@@ -1015,6 +1085,11 @@ server.handleClient(); // comment fusionner avec listenClient() ?
           //currentRead();
           //Serial.println("Tick Current Occurred : 0.5s");
           tickCurrent = false;
+   }
+
+   if (tickPOST == true) {
+          postDataClient();
+          tickPOST = false;
    }
 
 // ---------- On waiting client
@@ -1078,7 +1153,7 @@ yield(); //understand and test if it is necessary?!
           //HomeState="Not connected";
           RGB(0);
           return;
-    }         
+          }         
     homeClientConnected =true;
     Serial.println(HomeIP);
 
@@ -1088,8 +1163,56 @@ yield(); //understand and test if it is necessary?!
     // This will send the request to the server
     homeclient.print(String("GET ") + homeurl + iotDBnewget() +  " HTTP/1.1\r\n" + "Host: " + HomeIP+":" + homeport + "\r\n" + "Connection: close\r\n\r\n");
     //homeclient.print(String("GET ") + "api/esps" +  " HTTP/1.1\r\n" + "Host: " + HomeIP + "\r\n" + "Connection: close\r\n\r\n");
-    
+
     clientTimeout=0;
     waitingClient=true;
     }
+  }
+
+  void relayDataClient(String rsms) { //Equivalent to "home connect"
+          if (!homeclient.connect(HomeIP.c_str(), homeport)) {
+          Serial.println("connection failed to home ip as client");
+          homeClientConnected =false;
+          //HomeState="Not connected";
+          RGB(0);
+          return;
+          }         
+    Serial.println(HomeIP);
+
+    Serial.print("Requesting URL: ");
+    Serial.println(homeurl);
+          
+    // This will send the request to the server
+    homeclient.print(String("GET ") + homeurl + rsms +  " HTTP/1.1\r\n" + "Host: " + HomeIP+":" + homeport + "\r\n" + "Connection: close\r\n\r\n");
+      // to send the response to the relayed esp we need to connect ti it as client
+      // the last relay must transfor the rmessage into the "new GET method" with slashes
+   
+    Serial.print("Data relayed : ");
+    Serial.println(String("GET ") + homeurl + rsms +  " HTTP/1.1\r\n" + "Host: " + HomeIP+":" + homeport + "\r\n" + "Connection: close\r\n\r\n");  
+    
+    
+  }
+
+  void postDataClient() { //Equivalent to "home connect"
+ 
+          if (!homeclient.connect(HomeIP.c_str(), homeport)) {
+          Serial.println("POST failed to home ip as client");
+          homeClientConnected =false;
+          //HomeState="Not connected";
+          RGB(0);
+          return;
+          }
+    
+    
+    Serial.println(HomeIP);
+
+    Serial.print("Requesting URL: ");
+    Serial.println(homeurl);
+          
+    String cstr=cryptojson();
+    homeclient.print(String("POST ") + homeurl + " HTTP/1.1\r\n" + "Host: " + HomeIP+":" + homeport + "\r\n" + "ContentType: text/xml\r\n" + "Connection: close\r\n" + "Content-Length: " + cstr.length() + "\r\n\r\n" + cstr);
+    Serial.println("POST sent :");
+    Serial.println(String("POST ") + homeurl + " HTTP/1.1\r\n" + "Host: " + HomeIP+":" + homeport + "\r\n" + "ContentType: text/xml\r\n" + "Connection: close\r\n" + "Content-Length: " + cstr.length() + "\r\n\r\n" + cstr);
+
+    
   }
