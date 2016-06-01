@@ -1,5 +1,5 @@
 # EspArduinoIDE_AirSwitch
 Arduino Sketch for an IOT plug
 
-I used the git version of the esp8266 core for the Arduino IDE :
-https://github.com/esp8266/Arduino#using-git-version
+Works on the esp8266 core version 2.2.0  :
+https://github.com/esp8266/Arduino
