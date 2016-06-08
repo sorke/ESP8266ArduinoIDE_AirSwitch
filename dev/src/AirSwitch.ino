@@ -874,7 +874,7 @@ void setup(void) {
   server.send(200, "text/json", dhtjson());
   });
 
-  server.on("/tonetwork", HTTP_GET, []() {
+  server.on("/tonetwork", []() { // faire une notice du stair
     String rmessage ="?";
     int stair;
     int i=0;
@@ -885,6 +885,10 @@ void setup(void) {
       }else { stair=1;i=1;}
       
     rmessage += "stair="+String(stair)+"&";
+
+    // on va récupérer le message à déliver dans l'argument message
+    // on créé un json [{dataesp1:1},{dataesp2},{dataesp3}]
+    // que ce soit le serveur ou la freebox on met un indicateur pour indiquer qu'on passe en mode chainage
 
     for (i;i<server.args();i++){
       rmessage+= server.argName(i) +"="+ server.arg(i)+"&";
@@ -900,129 +904,141 @@ void setup(void) {
 
 // -------- Server.on / Home server connection
   server.on("/handshake", HTTP_GET, []() {
-  boolean change=false;
-  if (server.args() != 0) {
-    if (server.hasArg("iotname")) {
-      if (server.arg("iotname") != APssid) {
-        APssid = server.arg("iotname");
-        change = true;
-      }
-    } 
-    //      if (server.hasArg("pwd" == true and server.arg("pwd")!=APpwd)){APpwd=server.arg("pwd");
+    boolean change=false;
+    if (server.args() != 0) {
+      if (server.hasArg("iotname")) {
+        if (server.arg("iotname") != APssid) {
+          APssid = server.arg("iotname");
+          change = true;
+        }
+      } 
+      //      if (server.hasArg("pwd" == true and server.arg("pwd")!=APpwd)){APpwd=server.arg("pwd");
 
-    if (server.hasArg("homeip")) {
-      if (server.arg("homeip")!=HomeIP) {
-      HomeIP = server.arg("homeip");
-      change = true;
+      if (server.hasArg("homeip")) {
+        if (server.arg("homeip")!=HomeIP) {
+        HomeIP = server.arg("homeip");
+        change = true;
+        }
+      }
+      if (server.hasArg("homeport")) {
+        if (server.arg("homeport")!=String(homeport)) {
+        homeport = (server.arg("homeport")).toInt();
+        change = true;
+        }
+      }
+      server.send(200, "text/json", iotDBjson());
+      if(change){
+      writeHomeData(HomeFile);
+      WriteWifiData(InfoFile);
+      APconnect(APssid, APpwd);
       }
     }
-    if (server.hasArg("homeport")) {
-      if (server.arg("homeport")!=String(homeport)) {
-      homeport = (server.arg("homeport")).toInt();
-      change = true;
-      }
-    }
-    server.send(200, "text/json", iotDBjson());
-    if(change){
-    writeHomeData(HomeFile);
-    WriteWifiData(InfoFile);
-    APconnect(APssid, APpwd);
-    }
-  }
   });
 
   server.on("/rgb", HTTP_GET, []() {
-  if (server.args() != 0) {
-    if (server.hasArg("color")) { // add a bug protection if values are not between 0 and 7
-          RGB(server.arg("color").toInt());
+    if (server.args() != 0) {
+      if (server.hasArg("color")) { // add a bug protection if values are not between 0 and 7
+            RGB(server.arg("color").toInt());
+      }
+      server.send(200, "text/json", iotDBjson());
     }
-    server.send(200, "text/json", iotDBjson());
-  }
+  });
+
+
+  server.on("/happy", HTTP_POST, []() { // reprendre ce modele pour toutes les api + json library
+    if (server.args() != 0) {
+      if (server.hasArg("plain")) { // add a bug protection if values are not between 0 and 7
+            server.send(200, "text/json", server.arg("plain")); // What The Fuck ?? "plain" are you kidding ?
+      }
+
+
+
+    }else { server.send(200, "text/json", "no content");}
   });
 
   server.on("/relay", []() { // Ready for multiple relays
-  if (server.args() != 0) {
-    if (server.hasArg("r1")) {
-      if (server.arg("r1") == "on") {
-        writeRelay(1,HIGH);
+    if (server.args() != 0) {
+      if (server.hasArg("r1")) {
+        if (server.arg("r1") == "on") {
+          writeRelay(1,HIGH);
+        }
+        if (server.arg("r1") == "off") {
+          writeRelay(1,LOW);
+        }
       }
-      if (server.arg("r1") == "off") {
-        writeRelay(1,LOW);
+      if (server.hasArg("r2")) {
+        if (server.arg("r2") == "on") {
+          writeRelay(2,HIGH);
+        }
+        if (server.arg("r2") == "off") {
+          writeRelay(2,LOW);
+        }
       }
+      if (server.hasArg("r3")) {
+        if (server.arg("r3") == "on") {
+          writeRelay(3,HIGH);
+        }
+        if (server.arg("r3") == "off") {
+          writeRelay(3,LOW);
+        }
+      }
+      if (server.hasArg("r4")) {
+        if (server.arg("r4") == "on") {
+          writeRelay(4,HIGH);
+        }
+        if (server.arg("r4") == "off") {
+          writeRelay(4,LOW);
+        }
+      }        
     }
-    if (server.hasArg("r2")) {
-      if (server.arg("r2") == "on") {
-        writeRelay(2,HIGH);
-      }
-      if (server.arg("r2") == "off") {
-        writeRelay(2,LOW);
-      }
-    }
-    if (server.hasArg("r3")) {
-      if (server.arg("r3") == "on") {
-        writeRelay(3,HIGH);
-      }
-      if (server.arg("r3") == "off") {
-        writeRelay(3,LOW);
-      }
-    }
-    if (server.hasArg("r4")) {
-      if (server.arg("r4") == "on") {
-        writeRelay(4,HIGH);
-      }
-      if (server.arg("r4") == "off") {
-        writeRelay(4,LOW);
-      }
-    }        
-  }
-  server.send(200, "text/json", iotDBjson()); //do we need to update dht and current before sending iotDBjson ?
+    server.send(200, "text/json", iotDBjson()); //do we need to update dht and current before sending iotDBjson ?
   });
 
   server.on("/iotname", []() {
-  if (server.args() != 0 && server.arg("name") != "" ) {
-    String newAPname = server.arg("name");
-    Serial.print("Changing access point name to ");
-    Serial.println(newAPname);
-    if (APssid != newAPname) {
-      APssid = newAPname;
-      WriteWifiData(InfoFile);
-      server.send(200, "text/json", "{\"iotname\":\"" + APssid + "\"}");
-      WiFi.softAP(newAPname.c_str(), APpwd.c_str());
+    if (server.args() != 0 && server.arg("name") != "" ) {
+      String newAPname = server.arg("name");
+      Serial.print("Changing access point name to ");
+      Serial.println(newAPname);
+      if (APssid != newAPname) {
+        APssid = newAPname;
+        WriteWifiData(InfoFile);
+        server.send(200, "text/json", "{\"iotname\":\"" + APssid + "\"}");
+        WiFi.softAP(newAPname.c_str(), APpwd.c_str());
+      }
+      server.send(200, "text/json", iotDBjson());
     }
-    server.send(200, "text/json", iotDBjson());
-  }
-  else {
-    server.send(200, "text/json", iotDBjson());
-  }
+    else {
+      server.send(200, "text/json", iotDBjson());
+    }
   });
 
   server.on("/apconnect", []() {
-  String ssid = server.arg("ssid");
-  String pwd = server.arg("pwd");
-  if (ssid != "") {
-    if (ssid != STssid || pwd != STpwd) { //futur : if (pwd.length() >8 || pwd == ""){do things}else{"bad password"}
-      STssid = ssid;
-      STpwd = pwd;
-      WriteWifiData(InfoFile);
-      server.send(200, "text/json", "{\"apstate\":\"Connecting\",\"apname\":\"" + STssid + "\"}");
-      STconnect(STssid, STpwd);
-      WifiToVars(); // update wifi IPs
-    }
-    else {
-      if ( WifiActive == true) {
-        server.send(200, "text/json", "{\"apstate\":\"" + wifistatestring[WiFi.status()] + "\",\"apname\":\"" + STssid + "\"}");
+    String ssid = server.arg("ssid");
+    String pwd = server.arg("pwd");
+    if (ssid != "") {
+      if (ssid != STssid || pwd != STpwd) { //futur : if (pwd.length() >8 || pwd == ""){do things}else{"bad password"}
+        STssid = ssid;
+        STpwd = pwd;
+        WriteWifiData(InfoFile);
+        server.send(200, "text/json", "{\"apstate\":\"Connecting\",\"apname\":\"" + STssid + "\"}");
+        STconnect(STssid, STpwd);
+        WifiToVars(); // update wifi IPs
       }
       else {
-        server.send(200, "text/json", "{\"apstate\":\"Not connected\",\"apname\":\"" + STssid + "\"}");
+        if ( WifiActive == true) {
+          server.send(200, "text/json", "{\"apstate\":\"" + wifistatestring[WiFi.status()] + "\",\"apname\":\"" + STssid + "\"}");
+        }
+        else {
+          server.send(200, "text/json", "{\"apstate\":\"Not connected\",\"apname\":\"" + STssid + "\"}");
+        }
       }
     }
-  }
   });
 
   server.on("/update", HTTP_GET, []() {
-  currentRead();
-  dhtRead();
-  server.send(200, "text/json", iotDBjson());
+    currentRead();
+    dhtRead();
+    server.send(200, "text/json", iotDBjson());
   });
 
   server.on("/load", HTTP_GET, []() {
@@ -1036,7 +1052,7 @@ void setup(void) {
 // ------------- Timer initialisation
   tickUpdate = false;
   os_timer_setfn(&myTimer1, timerUpdate, NULL);
-  os_timer_arm(&myTimer1, 30000, true);
+  os_timer_arm(&myTimer1, 10000, true);
 
   tickDHT = false;
   os_timer_setfn(&myTimer2, timerDHT, NULL);
@@ -1048,7 +1064,7 @@ void setup(void) {
 
   tickPOST = false;
   os_timer_setfn(&myTimer4, timerPOST, NULL);
-  os_timer_arm(&myTimer4, 5000, true);
+  os_timer_arm(&myTimer4, 30000, true);
 
 // -------------- First home connection
   currentRead();
@@ -1086,10 +1102,10 @@ server.handleClient(); // comment fusionner avec listenClient() ?
           tickCurrent = false;
    }
 
-   if (tickPOST == true) {
-          postDataClient();
-          tickPOST = false;
-   }
+   //if (tickPOST == true) {
+   //       postDataClient();
+   //       tickPOST = false;
+   //}
 
 // ---------- On waiting client
   if(waitingClient){
